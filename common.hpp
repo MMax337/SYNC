@@ -7,8 +7,7 @@
 #include <cstdint>
 #include <vector>
 #include <netinet/in.h>
-
-struct PeerID;
+#include <iostream>
 
 using Clock = std::chrono::steady_clock;
 using TimePoint = std::chrono::time_point<Clock>;
@@ -21,16 +20,34 @@ using message_type_t  = std::uint8_t;         // Message type identifier
 using peer_count_t    = std::uint16_t;        // Number of peers in HELLO_REPLY (network byte order)
 using peer_addr_len_t = std::uint8_t;
 using message_t       = std::vector<std::uint8_t>;
-using peer_set_t      = std::unordered_set<PeerID, PeerID::Hash>;
 
 constexpr sync_level_t SYNC_LEVEL_UNSYNCED = 255;
 constexpr sync_level_t SYNC_LEVEL_LEADER = 0;
 constexpr sync_level_t MAX_SYNC_LEVEL = 254;
+
+// Max number of bytes that can be put into UDP datagram in IPv4
+// - 8  for UDP header
+// - 20 for IP header 
 constexpr size_t MAX_DATAGRAM = std::numeric_limits<uint16_t>::max() - 8 - 20;
 
+#ifndef NDEBUG
+#define NDEBUG true
+#endif
+
+inline void errorLog(const std::string& err) {
+  std::cerr << "ERROR " << err << '\n';
+}
+
+inline void log(const std::string& msg) {
+  if constexpr (!NDEBUG) {
+    std::cout << msg;
+  }
+}
+
+
 struct PeerID {
-  uint32_t ip;    // IPv4 address in host order.
-  uint16_t port;  // Port in host order.
+  peer_ip_t ip;  
+  peer_port_t port;
 
   bool operator==(const PeerID& other) const {
     return ip == other.ip && port == other.port;
@@ -38,8 +55,9 @@ struct PeerID {
 
   struct Hash {
     std::size_t operator()(const PeerID& pid) const {
-      return std::hash<uint32_t>()(pid.ip) ^ std::hash<uint16_t>()(pid.port);
+      return std::hash<peer_ip_t>()(pid.ip) ^ std::hash<peer_port_t>()(pid.port);
     }
   };
 };
 
+using peer_set_t = std::unordered_set<PeerID, PeerID::Hash>;

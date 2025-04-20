@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-Node::Node(std::optional<std::string>& bind_address, const uint16_t port = 0, std::optional<PeerID> peer = std::nullopt)
+Node::Node(std::optional<std::string>& bind_address, const uint16_t port, std::optional<PeerID> peer)
   : socket(bind_address, port), helloPeer(peer), bootTime(Clock::now()) {
   socket.setReadTimeOut(SYNC_INTERVAL);
 }
