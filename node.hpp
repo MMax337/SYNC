@@ -1,0 +1,73 @@
+#pragma once
+
+#include "socket.hpp"
+#include "common.hpp"
+#include <unordered_set>
+
+
+class Node {
+ public:
+  Node(std::optional<std::string>& bind_address, const uint16_t port = 0, std::optional<PeerID> peer = std::nullopt);
+  ~Node();
+
+  void run();
+ private:
+  static constexpr auto SYNC_START_DELAY = std::chrono::seconds(2); // Delay after becoming a leader.
+  static constexpr auto SYNC_INTERVAL    = std::chrono::seconds(5);
+  static constexpr auto SYNC_TIMEOUT     = std::chrono::seconds(20);
+
+
+  static auto constexpr SYNC_TIME = 5;
+  struct SyncInfo {
+    timestamp_t T1;
+    timestamp_t T2;
+    timestamp_t T3;
+    timestamp_t T4;
+
+    PeerID master;
+    sync_level_t master_lvl;
+    bool active = false;
+  };
+
+  Socket socket;
+  sync_level_t syncLevel = SYNC_LEVEL_UNSYNCED;
+  std::optional<PeerID> helloPeer = std::nullopt;
+  peer_set_t peers;
+  peer_set_t synced_peers; // Peers to whom the CONNECT was sent and waiting for ACK_CONNECT
+  peer_set_t ack_required_peers; // Peers to whom the CONNECT was sent and waiting for ACK_CONNECT
+  int64_t offsetMs = 0;
+  SyncInfo syncInfo;
+  const TimePoint bootTime;
+
+  TimePoint lastSyncSent; // The time without offset.
+  TimePoint lastGoodSync;
+  TimePoint leaderStart; // when a node became a leader.
+
+  void sendHello(const PeerID& target);
+  void sendHelloReply(const PeerID& target);
+  void sendConnect(const PeerID& target);
+  void sendAckConnect(const PeerID& target);
+  void sendSyncStart();
+  void sendTime(const PeerID& target);
+
+  void handleHelloReply(const message_t& mess, const PeerID& from);
+  void handleAckConnect(const PeerID& from);
+  void handleSyncStart(const Socket::ReceivedMessage& msg);
+  void handleLeader(const message_t& msg);
+  void handleDelayRequest(const PeerID& from);
+  void handleDelayResponse(const Socket::ReceivedMessage& msg);
+
+  void handleMessage(const Socket::ReceivedMessage& msg);
+
+  void becomeLeader();
+  void stopBeingLeader();
+
+  bool isLeader();
+  void becomeUnsync();
+
+  // Time including offset
+  timestamp_t now();
+  timestamp_t toTimestamp(TimePoint t);
+  std::chrono::seconds diff(TimePoint a, TimePoint b);
+
+};

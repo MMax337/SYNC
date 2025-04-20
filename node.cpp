@@ -1,0 +1,246 @@
+#include "node.hpp"
+#include "message.hpp"
+
+#include <iostream>
+
+Node::Node(std::optional<std::string>& bind_address, const uint16_t port = 0, std::optional<PeerID> peer = std::nullopt)
+  : socket(bind_address, port), helloPeer(peer), bootTime(Clock::now()) {
+  socket.setReadTimeOut(SYNC_INTERVAL);
+}
+
+Node::~Node() = default;
+
+void Node::run() {
+  if (helloPeer.has_value()) {
+    sendHello(helloPeer.value());
+  }
+
+  while (true) {
+    auto now = Clock::now();
+    if (isLeader() && leaderStart != TimePoint{} && diff(now, leaderStart) >= SYNC_START_DELAY) {
+      socket.setReadTimeOut(SYNC_INTERVAL);
+      leaderStart = TimePoint{};
+      sendSyncStart();
+    } else if (syncLevel < MAX_SYNC_LEVEL && diff(now, lastSyncSent) >= SYNC_INTERVAL) {
+      sendSyncStart();
+    } else if (diff(now, lastGoodSync) >= SYNC_TIMEOUT) {
+      becomeUnsync();
+    }
+
+    auto msg = socket.recvFrom();
+    if (msg.has_value()) {
+      handleMessage(msg.value());
+    }
+  }
+}
+
+void Node::sendHello(const PeerID& target) {
+  auto msg = Message::makeHello();
+  socket.sendTo(msg, target);
+}
+
+void Node::sendHelloReply(const PeerID& target) {
+  auto msg = Message::makeHelloReply(peers);
+  socket.sendTo(msg, target);
+}
+
+void Node::handleHelloReply(const message_t& msg, const PeerID& from) {
+  if (!helloPeer.has_value() || helloPeer.value() != from) {
+    std::cerr << "ERROR " << " got hello reply from wrong!\n";
+    return;
+  }
+  peers.insert(from);
+  helloPeer = std::nullopt; // set peer to nullopt because HELLO_REPLY is no longer expected.
+
+  ack_required_peers = Message::parseHelloReply(msg);
+  for (const auto& peer : ack_required_peers) {
+    sendConnect(peer);
+  }
+}
+
+void Node::sendConnect(const PeerID& target) {
+  auto msg = Message::makeConnect();
+  socket.sendTo(msg, target);
+}
+
+void Node::sendAckConnect(const PeerID& target) {
+  auto msg = Message::makeAckConnect();
+  socket.sendTo(msg, target);
+}
+
+void Node::handleAckConnect(const PeerID& from) {
+  if (!ack_required_peers.contains(from)) {
+    std::cerr << "ERROR " << " got unexpected ACK_CONNECT\n";
+    return;
+  }
+
+  ack_required_peers.erase(from);
+  peers.insert(from);
+}
+
+void Node::handleLeader(const message_t& msg) {
+  sync_level_t sync = Message::parseLeader(msg);
+
+  if (sync == SYNC_LEVEL_LEADER) {
+    becomeLeader();
+  } else if (sync == SYNC_LEVEL_UNSYNCED && syncLevel == SYNC_LEVEL_LEADER) {
+    stopBeingLeader();
+  } else {
+    std::cerr << "ERROR BAD LEADER\n";
+  }
+}
+
+void Node::handleSyncStart(const Socket::ReceivedMessage& msg) {
+  auto& [from, data, T2] = msg;
+  
+  auto [lvl, T1] = Message::parseSyncStart(data);
+  if (synced_peers.contains(from) && lvl < syncLevel) {
+    lastGoodSync = T2;
+  }
+
+  if (syncInfo.active) {
+    return;
+  }
+
+  if (!peers.contains(from) || lvl >= 254) {
+    // not satisfied
+    return;
+  } else if (synced_peers.contains(from) && lvl >= syncLevel) {
+    // I am synced with the sender but its level is weak
+    return;
+  } else if (!synced_peers.contains(from) && lvl + 2 > syncLevel) {
+    // I am unsynced with the sender but its level is weak.
+    return;
+  }
+
+  // sync can be done
+  syncInfo.active = true;
+  syncInfo.master = from;
+  syncInfo.master_lvl = lvl;
+  syncInfo.T1 = T1;
+  syncInfo.T2 = toTimestamp(T2);
+
+  auto delayRequest = Message::makeDelayRequest();
+  socket.sendTo(delayRequest, from);
+}
+
+void Node::becomeLeader() {
+  syncLevel = SYNC_LEVEL_LEADER;
+  leaderStart = Clock::now();
+  socket.setReadTimeOut(SYNC_START_DELAY);
+  
+  std::cout << "[Node] Became leader\n";
+}
+
+void Node::stopBeingLeader() {
+  becomeUnsync();
+  std::cout << "[Node] Stopped being leader\n";
+}
+
+void Node::sendTime(const PeerID& target) {
+  auto msg = Message::makeTime(syncLevel, now());
+  socket.sendTo(msg, target);
+}
+
+void Node::handleDelayRequest(const PeerID& from) {
+  if (!peers.contains(from)) {
+    return;
+  }
+
+  auto msg = Message::makeDelayResponse(syncLevel, now());
+
+  socket.sendTo(msg, from);
+}
+
+void Node::handleDelayResponse(const Socket::ReceivedMessage& msg) {
+  auto [from, data, receivedAt] = msg;
+  if (!syncInfo.active || from != syncInfo.master) return;
+
+  auto [lvl, T4] = Message::parseDelayResponse(data);
+
+  if (lvl != syncInfo.master_lvl) return;
+  syncInfo.T4 = T4;
+  
+  offsetMs = (syncInfo.T2 - syncInfo.T1 + syncInfo.T3 - syncInfo.T4) / 2;
+  syncInfo.active = false;
+
+  syncLevel = lvl + 1;
+  synced_peers.insert(from);
+}
+
+void Node::sendSyncStart() {
+  lastSyncSent = Clock::now();
+  for (const auto& peer : peers) {
+    auto msg = Message::makeSyncStart(syncLevel, now());
+    socket.sendTo(msg, peer);
+  }
+}
+
+void Node::handleMessage(const Socket::ReceivedMessage& msg) {
+  auto& [from, data, receivedAt] = msg;
+
+  if (data.empty()) {
+    std::cerr << "ERROR empty data\n";
+  }
+  switch (Message::type(data)) {
+    case Message::Type::HELLO:
+      peers.insert(from);
+      sendHelloReply(from);
+      break;
+    case Message::Type::HELLO_REPLY:
+      handleHelloReply(data, from);
+      break;
+    case Message::Type::CONNECT:
+      peers.insert(from);
+      sendAckConnect(from);
+      break;
+    case Message::Type::ACK_CONNECT:
+      handleAckConnect(from);
+      break;
+    case Message::Type::SYNC_START:
+      handleSyncStart(msg);
+      break;
+    case Message::Type::DELAY_REQUEST:
+      handleDelayRequest(from);
+      break;
+    case Message::Type::DELAY_RESPONSE:
+      handleDelayResponse(msg);
+      break;
+    case Message::Type::LEADER:
+      handleLeader(data);
+      break;
+    case Message::Type::GET_TIME:
+      sendTime(from);
+      break;
+    default:
+      std::cerr << "[Node] Unknown message type\n";
+      break;
+  }
+}
+
+timestamp_t Node::now() {
+  auto now = Clock::now();
+  return std::chrono::duration_cast<std::chrono::milliseconds>(now - bootTime).count();
+}
+
+timestamp_t Node::toTimestamp(TimePoint t) {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(t - bootTime).count(); 
+}
+
+bool Node::isLeader() {
+  return syncLevel == SYNC_LEVEL_LEADER;
+}
+
+std::chrono::seconds Node::diff(TimePoint a, TimePoint b) {
+  return std::chrono::duration_cast<std::chrono::seconds>(a - b); 
+}
+
+void Node::becomeUnsync() {
+  syncLevel = SYNC_LEVEL_UNSYNCED;
+  synced_peers.clear();
+  offsetMs = 0;
+}
+
+
+
+
