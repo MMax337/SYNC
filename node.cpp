@@ -23,7 +23,7 @@ void Node::run() {
     } else if (syncLevel < MAX_SYNC_LEVEL && diff(now, lastSyncSent) >= SYNC_INTERVAL) {
       log("Syncing start");
       sendSyncStart();
-    } else if (diff(now, lastGoodSync) >= SYNC_TIMEOUT) {
+    } else if (!isLeader() && diff(now, lastGoodSync) >= SYNC_TIMEOUT) {
       log("Long time without sync, becoming unsync");
       becomeUnsync();
     }
@@ -125,6 +125,7 @@ void Node::handleSyncStart(const Socket::ReceivedMessage& msg) {
     error() << "Got wrong SYNC_START from: " << from << " lvl: " << lvl << '\n';
     return;
   } else if (synced_peers.contains(from) && lvl >= syncLevel) {
+    synced_peers.erase(from);
     error() << "Got worse SYNC_START start from: " << from << " lvl: " << lvl << '\n';
     return;
   } else if (!synced_peers.contains(from) && lvl + 2 > syncLevel) {
@@ -264,7 +265,3 @@ void Node::becomeUnsync() {
 
   log("Became unsynced");
 }
-
-
-
-
