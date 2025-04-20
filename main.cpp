@@ -18,9 +18,9 @@ bool is_valid_port(const std::string& s, bool allow_zero = true) {
 int main(int argc, char* argv[]) {
   int port = 0;
 
-  std::optional<std::string> bind_address;
-  std::optional<std::string> peer_address;
-  std::optional<uint16_t> peer_port;
+  std::optional<std::string> bind_address = std::nullopt;
+  std::optional<std::string> peer_address = std::nullopt;
+  std::optional<uint16_t> peer_port = std::nullopt;
 
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Validate the pair -a/-r
-  if (peer_address.has_value() != !peer_port.has_value()) {
+  if (peer_address.has_value() != peer_port.has_value()) {
     std::cerr << "Both -a and -r must be provided together.\n";
     return 1;
   }
