@@ -16,33 +16,42 @@ void Node::run() {
   while (true) {
     auto now = Clock::now();
     if (isLeader() && leaderStart != TimePoint{} && diff(now, leaderStart) >= SYNC_START_DELAY) {
+      log("Me a leader starts syncing");
       socket.setReadTimeOut(SYNC_INTERVAL);
       leaderStart = TimePoint{};
       sendSyncStart();
     } else if (syncLevel < MAX_SYNC_LEVEL && diff(now, lastSyncSent) >= SYNC_INTERVAL) {
+      log("Syncing start");
       sendSyncStart();
     } else if (diff(now, lastGoodSync) >= SYNC_TIMEOUT) {
+      log("Long time without sync, becoming unsync");
       becomeUnsync();
     }
 
     auto msg = socket.recvFrom();
     if (msg.has_value()) {
+      log("Got message");
       handleMessage(msg.value());
     }
   }
 }
 
 void Node::sendHello(const PeerID& target) {
+  log("Sending Hello to ", target);
   auto msg = Message::makeHello();
   socket.sendTo(msg, target);
 }
 
 void Node::sendHelloReply(const PeerID& target) {
+  log("Sending HelloReply to ", target);
+
   auto msg = Message::makeHelloReply(peers);
   socket.sendTo(msg, target);
 }
 
 void Node::handleHelloReply(const message_t& msg, const PeerID& from) {
+  log("Got HelloReply from: ", from);
+
   if (!helloPeer.has_value() || helloPeer.value() != from) {
     std::cerr << "ERROR " << " got hello reply from wrong!\n";
     return;
@@ -57,11 +66,14 @@ void Node::handleHelloReply(const message_t& msg, const PeerID& from) {
 }
 
 void Node::sendConnect(const PeerID& target) {
+  log("Sending CONNECT to ", target.to_string());
+
   auto msg = Message::makeConnect();
   socket.sendTo(msg, target);
 }
 
 void Node::sendAckConnect(const PeerID& target) {
+  log("Sending ACK_CONNECT to", target);
   auto msg = Message::makeAckConnect();
   socket.sendTo(msg, target);
 }
@@ -69,6 +81,7 @@ void Node::sendAckConnect(const PeerID& target) {
 void Node::sendSyncStart() {
   lastSyncSent = Clock::now();
   for (const auto& peer : peers) {
+    log("Sending SYNC_CONNECT to ", peer);
     auto msg = Message::makeSyncStart(syncLevel, now());
     socket.sendTo(msg, peer);
   }
@@ -76,7 +89,7 @@ void Node::sendSyncStart() {
 
 void Node::handleAckConnect(const PeerID& from) {
   if (!ack_required_peers.contains(from)) {
-    std::cerr << "ERROR " << " got unexpected ACK_CONNECT\n";
+    error("got unexpected ACK_CONNECT");
     return;
   }
 
@@ -92,7 +105,7 @@ void Node::handleLeader(const message_t& msg) {
   } else if (sync == SYNC_LEVEL_UNSYNCED && syncLevel == SYNC_LEVEL_LEADER) {
     stopBeingLeader();
   } else {
-    std::cerr << "ERROR BAD LEADER\n";
+    error("BAD LEADER MESSAGE");
   }
 }
 
@@ -109,13 +122,13 @@ void Node::handleSyncStart(const Socket::ReceivedMessage& msg) {
   }
 
   if (!peers.contains(from) || lvl >= 254) {
-    // not satisfied
+    error() << "Got wrong SYNC_START from: " << from << " lvl: " << lvl << '\n';
     return;
   } else if (synced_peers.contains(from) && lvl >= syncLevel) {
-    // I am synced with the sender but its level is weak
+    error() << "Got worse SYNC_START start from: " << from << " lvl: " << lvl << '\n';
     return;
   } else if (!synced_peers.contains(from) && lvl + 2 > syncLevel) {
-    // I am unsynced with the sender but its level is weak.
+    error() << "Got worse SYNC_START start from: " << from << " lvl: " << lvl << '\n';
     return;
   }
 
@@ -126,6 +139,7 @@ void Node::handleSyncStart(const Socket::ReceivedMessage& msg) {
   syncInfo.T1 = T1;
   syncInfo.T2 = toTimestamp(T2);
 
+  log("Sending DelayRequest to ", from);
   auto delayRequest = Message::makeDelayRequest();
   socket.sendTo(delayRequest, from);
 }
@@ -135,12 +149,12 @@ void Node::becomeLeader() {
   leaderStart = Clock::now();
   socket.setReadTimeOut(SYNC_START_DELAY);
   
-  std::cout << "[Node] Became leader\n";
+  log("Became a leader");
 }
 
 void Node::stopBeingLeader() {
   becomeUnsync();
-  std::cout << "[Node] Stopped being leader\n";
+  log("Stopped being a leader");
 }
 
 void Node::sendTime(const PeerID& target) {
@@ -149,24 +163,30 @@ void Node::sendTime(const PeerID& target) {
 }
 
 void Node::handleDelayRequest(const PeerID& from) {
+  log("Got DelayRequest from", from);
+
   if (!peers.contains(from)) {
     return;
   }
 
+  log("Sending DelayResponse to: ", from);
   auto msg = Message::makeDelayResponse(syncLevel, now());
-
   socket.sendTo(msg, from);
 }
 
 void Node::handleDelayResponse(const Socket::ReceivedMessage& msg) {
   auto [from, data, receivedAt] = msg;
+  log("Got DelayResposne, from:", from);
+
   if (!syncInfo.active || from != syncInfo.master) return;
 
   auto [lvl, T4] = Message::parseDelayResponse(data);
 
   if (lvl != syncInfo.master_lvl) return;
+
+  log("Syncing with: ", from);
+
   syncInfo.T4 = T4;
-  
   offsetMs = (syncInfo.T2 - syncInfo.T1 + syncInfo.T3 - syncInfo.T4) / 2;
   syncInfo.active = false;
 
@@ -184,6 +204,7 @@ void Node::handleMessage(const Socket::ReceivedMessage& msg) {
 
   switch (Message::type(data)) {
     case Message::Type::HELLO:
+      log("Got hello from: ", from);
       peers.insert(from);
       sendHelloReply(from);
       break;
@@ -191,6 +212,7 @@ void Node::handleMessage(const Socket::ReceivedMessage& msg) {
       handleHelloReply(data, from);
       break;
     case Message::Type::CONNECT:
+      log("Got CONNECT from ", from);
       peers.insert(from);
       sendAckConnect(from);
       break;
@@ -239,6 +261,8 @@ void Node::becomeUnsync() {
   syncLevel = SYNC_LEVEL_UNSYNCED;
   synced_peers.clear();
   offsetMs = 0;
+
+  log("Became unsynced");
 }
 
 

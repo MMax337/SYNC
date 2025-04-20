@@ -13,7 +13,14 @@ struct PeerID {
     return ip == other.ip && port == other.port;
   }
 
+  std::string to_string() const;
+
+  friend std::ostream& operator<<(std::ostream& os, const PeerID& pid);
+  
   struct Hash {
     std::size_t operator()(const PeerID& pid) const;
   };
+
+
 };
+
