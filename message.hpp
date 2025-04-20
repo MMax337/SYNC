@@ -41,8 +41,11 @@ class Message {
   static message_t makeLeader();
   static message_t makeGetTime();
   static message_t makeTime(sync_level_t sync, timestamp_t timestamp);
+  
+  static void logError(const message_t& msg);
 
  private:
+  static constexpr size_t MAX_ERROR_BYTES = 10;
   // MAX_PEERS calculates the maximum number of peers that can fit in the message, 
   // based on the message structure and size constraints.
   static constexpr uint16_t MAX_PEERS = 

@@ -3,12 +3,10 @@
 
 #include <iostream>
 
-Node::Node(std::optional<std::string>& bind_address, const uint16_t port, std::optional<PeerID> peer)
+Node::Node(const std::optional<std::string>& bind_address, const uint16_t port, std::optional<PeerID> peer)
   : socket(bind_address, port), helloPeer(peer), bootTime(Clock::now()) {
   socket.setReadTimeOut(SYNC_INTERVAL);
 }
-
-Node::~Node() = default;
 
 void Node::run() {
   if (helloPeer.has_value()) {
@@ -66,6 +64,14 @@ void Node::sendConnect(const PeerID& target) {
 void Node::sendAckConnect(const PeerID& target) {
   auto msg = Message::makeAckConnect();
   socket.sendTo(msg, target);
+}
+
+void Node::sendSyncStart() {
+  lastSyncSent = Clock::now();
+  for (const auto& peer : peers) {
+    auto msg = Message::makeSyncStart(syncLevel, now());
+    socket.sendTo(msg, peer);
+  }
 }
 
 void Node::handleAckConnect(const PeerID& from) {
@@ -168,20 +174,14 @@ void Node::handleDelayResponse(const Socket::ReceivedMessage& msg) {
   synced_peers.insert(from);
 }
 
-void Node::sendSyncStart() {
-  lastSyncSent = Clock::now();
-  for (const auto& peer : peers) {
-    auto msg = Message::makeSyncStart(syncLevel, now());
-    socket.sendTo(msg, peer);
-  }
-}
-
 void Node::handleMessage(const Socket::ReceivedMessage& msg) {
   auto& [from, data, receivedAt] = msg;
 
   if (data.empty()) {
-    std::cerr << "ERROR empty data\n";
+    Message::logError(data);
+    return;
   }
+
   switch (Message::type(data)) {
     case Message::Type::HELLO:
       peers.insert(from);
@@ -213,7 +213,7 @@ void Node::handleMessage(const Socket::ReceivedMessage& msg) {
       sendTime(from);
       break;
     default:
-      std::cerr << "[Node] Unknown message type\n";
+      Message::logError(data);
       break;
   }
 }

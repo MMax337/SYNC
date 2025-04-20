@@ -7,8 +7,8 @@
 
 class Node {
  public:
-  Node(std::optional<std::string>& bind_address, const uint16_t port = 0, std::optional<PeerID> peer = std::nullopt);
-  ~Node();
+  Node(const std::optional<std::string>& bind_address, const uint16_t port, std::optional<PeerID> peer);
+  ~Node() = default;
 
   void run();
  private:

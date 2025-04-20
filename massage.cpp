@@ -1,8 +1,9 @@
 #include "message.hpp"
 #include <cstring>
-#include <arpa/inet.h>
 #include <stdexcept>
-
+#include <algorithm>
+#include <sstream>
+#include <iomanip>
 
 using Type = Message::Type;
 
@@ -34,6 +35,7 @@ message_t Message::makeHelloReply(const peer_set_t& peers) {
 
 peer_set_t Message::parseHelloReply(const message_t& msg) {
   if (msg.size() < 3 || static_cast<Type>(msg[0]) != Type::HELLO_REPLY) {
+    logError(msg);
     throw std::runtime_error("Invalid HELLO_REPLY message");
   }
 
@@ -46,12 +48,14 @@ peer_set_t Message::parseHelloReply(const message_t& msg) {
   peer_set_t peers;
   if ((msg.size() - sizeof(message_type_t) - sizeof(peer_count_t)) %
       (sizeof(peer_addr_len_t) + sizeof(peer_port_t) + sizeof(peer_ip_t)) != 0) {
+    logError(msg);
     throw std::runtime_error("Truncated peer entry in HELLO_REPLY");
   }
 
   for (uint16_t i = 0; i < count; ++i) {
     uint8_t ipLength = msg[offset++];
     if (ipLength != 4) {
+      logError(msg);
       throw std::runtime_error("Invalid IP length in HELLO_REPLY");
     }
 
@@ -71,37 +75,39 @@ peer_set_t Message::parseHelloReply(const message_t& msg) {
   return peers;
 }
 
-std::pair<uint8_t, int64_t> Message::parseSyncStart(const message_t& msg) {
+std::pair<sync_level_t, timestamp_t> Message::parseSyncStart(const message_t& msg) {
   if (msg.size() != 10 || static_cast<Type>(msg[0]) != Type::SYNC_START) {
+    logError(msg);
     throw std::runtime_error("Invalid SYNC_START message");
   }
   
-  uint8_t lvl = msg[1];
+  sync_level_t lvl = msg[1];
 
-  int64_t t;
+  timestamp_t t;
   std::memcpy(&t, &msg[2], sizeof(t));
   t = be64toh(t);
 
   return {lvl, t};
 }
 
-std::pair<uint8_t, int64_t> Message::parseDelayResponse(const message_t& msg) {
+std::pair<sync_level_t, timestamp_t> Message::parseDelayResponse(const message_t& msg) {
   if (msg.size() != 10 || static_cast<Type>(msg[0]) != Type::DELAY_RESPONSE) {
+    logError(msg);
     throw std::runtime_error("Invalid SYNC_START message");
   }
   
-  uint8_t lvl = msg[1];
+  sync_level_t lvl = msg[1];
 
-  int64_t t;
+  timestamp_t t;
   std::memcpy(&t, &msg[2], sizeof(t));
   t = be64toh(t);
 
   return {lvl, t};
 }
 
-
-uint8_t Message::parseLeader(const message_t& msg) {
+sync_level_t Message::parseLeader(const message_t& msg) {
   if (msg.size() != 2 || static_cast<Type>(msg[0]) != Type::LEADER) {
+    logError(msg);
     throw std::runtime_error("Invalid LEADER message");
   }
 
@@ -154,13 +160,26 @@ message_t Message::makeTime(sync_level_t sync, timestamp_t timestamp) {
   return msg;
 }
 
+void Message::logError(const message_t& msg) {
+  std::ostringstream oss;
+  oss << "MSG ";
+  if (msg.empty()) {
+    oss << "EMPTY";
+  } else {
+    for (size_t i = 0; i < std::min(msg.size(), MAX_ERROR_BYTES); ++i) {
+      oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(msg[i]);
+    }
+  }
+  error(oss.str());
+}
+
 uint8_t Message::toByte(Type t) {
   return static_cast<uint8_t>(t);
 }
 
 void Message::add_peer(message_t& msg, const PeerID& peer) {
-  uint32_t ip = htonl(peer.ip);
-  uint16_t port = htons(peer.port);
+  peer_ip_t ip = htonl(peer.ip);
+  peer_port_t port = htons(peer.port);
 
   msg.push_back(static_cast<uint8_t>(sizeof(PeerID::ip)));
   msg.insert(msg.end(), reinterpret_cast<uint8_t*>(&ip), reinterpret_cast<uint8_t*>(&ip) + sizeof(ip));

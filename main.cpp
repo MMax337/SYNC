@@ -3,6 +3,8 @@
 #include <optional>
 #include <cstdlib>
 
+#include "node.hpp"
+
 bool is_valid_port(const std::string& s, bool allow_zero = true) {
   try {
     int port = std::stoi(s);
@@ -18,7 +20,7 @@ int main(int argc, char* argv[]) {
 
   std::optional<std::string> bind_address;
   std::optional<std::string> peer_address;
-  std::optional<int> peer_port;
+  std::optional<uint16_t> peer_port;
 
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
@@ -56,16 +58,12 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  // Wyświetlenie konfiguracji
-  std::cout << "Bind address: " << (bind_address ? *bind_address : "INADDR_ANY (default)") << "\n";
-  std::cout << "Port: " << port << "\n";
-
-  if (peer_address && peer_port) {
-      std::cout << "Peer address: " << *peer_address << "\n";
-      std::cout << "Peer port: " << *peer_port << "\n";
-  } else {
-      std::cout << "No peer configured.\n";
+  std::optional<PeerID> peer = std::nullopt;
+  if (peer_address.has_value() && peer_port.has_value()) {
+    peer = PeerID(peer_address.value(), peer_port.value());
   }
 
+  Node node = Node(bind_address, port, peer);
+  node.run();
   return 0;
 }
