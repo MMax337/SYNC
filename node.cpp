@@ -27,6 +27,7 @@ void Node::run() {
       log("Long time without sync, becoming unsync");
       becomeUnsync();
     }
+    log("Listening");
 
     auto msg = socket.recvFrom();
     if (msg.has_value()) {
@@ -122,14 +123,14 @@ void Node::handleSyncStart(const Socket::ReceivedMessage& msg) {
   }
 
   if (!peers.contains(from) || lvl >= 254) {
-    error() << "Got wrong SYNC_START from: " << from << " lvl: " << lvl << '\n';
+    error("Got wrong SYNC_START from: ", from, " lvl: ",lvl);
     return;
   } else if (synced_peers.contains(from) && lvl >= syncLevel) {
     synced_peers.erase(from);
-    error() << "Got worse SYNC_START start from: " << from << " lvl: " << lvl << '\n';
+    error("Got worse SYNC_START start from: ", from, " lvl: ", lvl);
     return;
   } else if (!synced_peers.contains(from) && lvl + 2 > syncLevel) {
-    error() << "Got worse SYNC_START start from: " << from << " lvl: " << lvl << '\n';
+    error("Got worse SYNC_START start from: ", from, " lvl: ", lvl);
     return;
   }
 
@@ -262,6 +263,7 @@ void Node::becomeUnsync() {
   syncLevel = SYNC_LEVEL_UNSYNCED;
   synced_peers.clear();
   offsetMs = 0;
+  lastGoodSync = Clock::now();
 
   log("Became unsynced");
 }

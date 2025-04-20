@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
   if (peer_address.has_value() && peer_port.has_value()) {
     peer = PeerID(peer_address.value(), peer_port.value());
   }
-
+  
   Node node = Node(bind_address, port, peer);
   node.run();
   return 0;

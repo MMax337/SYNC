@@ -1,6 +1,8 @@
 #include "socket.hpp"
 
 #include <iostream>
+#include <cstring>
+#include <cerrno>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <netdb.h>
@@ -10,7 +12,7 @@
 Socket::Socket(std::optional<std::string> ip, uint16_t port) {
   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
   if (sockfd < 0) {
-    perror("ERROR socket");
+    error("socket ", std::strerror(errno));
     exit(1);
   }
 
@@ -21,14 +23,14 @@ Socket::Socket(std::optional<std::string> ip, uint16_t port) {
   if (!ip.has_value()) {
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
   } else {
-    if (inet_pton(AF_INET, ip->c_str(), &addr.sin_addr) != 1) {
-      std::cerr << "ERROR invalid IP address: " << *ip << std::endl;
+    if (inet_pton(AF_INET, ip->c_str(), &addr.sin_addr) < 0) {
+      error("INVALID IP address ", ip.value(), std::strerror(errno));
       exit(1);
     }
   }
 
   if (bind(sockfd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
-    perror("ERROR bind");
+    error("INVALID bind ", std::strerror(errno));
     exit(1);
   }
 }
@@ -48,7 +50,7 @@ void Socket::sendTo(message_t& message, const PeerID& peer) {
   ssize_t sent = sendto(sockfd, message.data(), message.size(), 0,
                         reinterpret_cast<const sockaddr*>(&destAddr), sizeof(destAddr));
   if (sent < 0) {
-    perror("ERROR sendto");
+    error("sendto ", std::strerror(errno));
     exit(1);
   }
 }
@@ -67,7 +69,7 @@ std::optional<Socket::ReceivedMessage> Socket::recvFrom() {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
       return std::nullopt; // Timeout occurred
     } else {
-      perror("ERROR recvfrom: ");
+      error("recvfrom ", std::strerror(errno));
       exit(1);
     }
   }
@@ -90,7 +92,7 @@ void Socket::setReadTimeOut(std::chrono::seconds sec) {
   timeout.tv_usec = 0;
 
   if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
-    perror("ERROR setsockopt");
+    error("setsockopt ", std::strerror(errno));
     throw std::runtime_error("Error");
   }
 }
