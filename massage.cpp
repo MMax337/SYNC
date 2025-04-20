@@ -116,7 +116,7 @@ message_t Message::makeAckConnect() {
   return {toByte(Type::ACK_CONNECT)};
 }
 
-message_t Message::makeSyncStart(uint8_t sync, int64_t T1) {
+message_t Message::makeSyncStart(sync_level_t sync, timestamp_t T1) {
   message_t msg;
   msg.push_back(toByte(Type::SYNC_START));
   msg.push_back(sync);
@@ -130,7 +130,7 @@ message_t Message::makeDelayRequest() {
   return msg;
 }
 
-message_t Message::makeDelayResponse(uint8_t sync, int64_t T4) {
+message_t Message::makeDelayResponse(sync_level_t sync, timestamp_t T4) {
   message_t msg;
   msg.push_back(toByte(Type::DELAY_RESPONSE));
   msg.push_back(sync);
@@ -146,7 +146,7 @@ message_t Message::makeGetTime() {
   return {toByte(Type::GET_TIME)};
 }
 
-message_t Message::makeTime(uint8_t sync, int64_t timestamp) {
+message_t Message::makeTime(sync_level_t sync, timestamp_t timestamp) {
   message_t msg;
   msg.push_back(toByte(Type::TIME));
   msg.push_back(sync);
