@@ -70,4 +70,14 @@ class Node {
   timestamp_t toTimestamp(TimePoint t);
   std::chrono::seconds diff(TimePoint a, TimePoint b);
 
+  template<typename arg_t, typename... args_t>
+  void log(arg_t&& arg, args_t&&... args) {
+    if constexpr (enable_logging) {
+      std::cout << "At " << now() << " ms. " << std::forward<arg_t>(arg);
+      // Fold expression for remaining arguments
+      ((std::cout << ", " << std::forward<args_t>(args)), ...);
+      std::cout << '\n';
+    }
+  }
+
 };

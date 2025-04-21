@@ -26,13 +26,3 @@ void error(arg_t&& arg, args_t&&... args) {
   }
 }
 
-template<typename arg_t, typename... args_t>
-void log(arg_t&& arg, args_t&&... args) {
-  if constexpr (enable_logging) {
-    std::cout << std::forward<arg_t>(arg);
-    // Fold expression for remaining arguments
-    ((std::cout << ", " << std::forward<args_t>(args)), ...);
-    std::cout << '\n';
-  }
-}
-

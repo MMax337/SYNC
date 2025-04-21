@@ -27,34 +27,32 @@ void Node::run() {
       log("Long time without sync, becoming unsync");
       becomeUnsync();
     }
-    log("Listening");
 
     auto msg = socket.recvFrom();
     if (msg.has_value()) {
-      log("Got message");
       handleMessage(msg.value());
     }
   }
 }
 
 void Node::sendHello(const PeerID& target) {
-  log("Sending Hello to ", target);
+  log("Sending HELLO to ", target);
   auto msg = Message::makeHello();
   socket.sendTo(msg, target);
 }
 
 void Node::sendHelloReply(const PeerID& target) {
-  log("Sending HelloReply to ", target);
+  log("Sending HELLO_REPLY to ", target);
 
   auto msg = Message::makeHelloReply(peers);
   socket.sendTo(msg, target);
 }
 
 void Node::handleHelloReply(const message_t& msg, const PeerID& from) {
-  log("Got HelloReply from: ", from);
+  log("Got HELLO_REPLY from: ", from);
 
   if (!helloPeer.has_value() || helloPeer.value() != from) {
-    std::cerr << "ERROR " << " got hello reply from wrong!\n";
+    error("got hello reply from wrong node: ", from);
     return;
   }
   peers.insert(from);
@@ -67,14 +65,14 @@ void Node::handleHelloReply(const message_t& msg, const PeerID& from) {
 }
 
 void Node::sendConnect(const PeerID& target) {
-  log("Sending CONNECT to ", target.to_string());
+  log("Sending CONNECT to ", target);
 
   auto msg = Message::makeConnect();
   socket.sendTo(msg, target);
 }
 
 void Node::sendAckConnect(const PeerID& target) {
-  log("Sending ACK_CONNECT to", target);
+  log("Sending ACK_CONNECT to ", target);
   auto msg = Message::makeAckConnect();
   socket.sendTo(msg, target);
 }
@@ -165,13 +163,13 @@ void Node::sendTime(const PeerID& target) {
 }
 
 void Node::handleDelayRequest(const PeerID& from) {
-  log("Got DelayRequest from", from);
+  log("Got DELAY_REQUEST from", from);
 
   if (!peers.contains(from)) {
     return;
   }
 
-  log("Sending DelayResponse to: ", from);
+  log("Sending DELAY_RESPONSE to: ", from);
   auto msg = Message::makeDelayResponse(syncLevel, now());
   socket.sendTo(msg, from);
 }
