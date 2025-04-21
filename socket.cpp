@@ -23,10 +23,23 @@ Socket::Socket(std::optional<std::string> ip, uint16_t port) {
   if (!ip.has_value()) {
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
   } else {
-    if (inet_pton(AF_INET, ip->c_str(), &addr.sin_addr) < 0) {
-      error("INVALID IP address ", ip.value(), std::strerror(errno));
+    addrinfo hints {};
+    hints.ai_family = AF_INET;   
+    hints.ai_socktype = SOCK_DGRAM; 
+    hints.ai_flags = AI_NUMERICSERV;
+
+    addrinfo* res;
+    int err = getaddrinfo(ip->c_str(), nullptr, &hints, &res);
+    if (err != 0) {
+      error("getaddrinfo failed for ", ip.value(), ": ", gai_strerror(err));
+      freeaddrinfo(res);
       exit(1);
     }
+
+    sockaddr_in* resolved = reinterpret_cast<sockaddr_in*>(res->ai_addr);
+    addr.sin_addr = resolved->sin_addr;
+
+    freeaddrinfo(res);
   }
 
   if (bind(sockfd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {

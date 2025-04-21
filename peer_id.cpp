@@ -1,13 +1,27 @@
 #include "peer_id.hpp"
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
 PeerID::PeerID(const std::string& ip_str, peer_port_t port) : port(port) {
-  in_addr addr;
-  if (inet_pton(AF_INET, ip_str.c_str(), &addr) != 1) {
-    throw std::invalid_argument("Invalid IP address: " + ip_str);
+  addrinfo hints {};
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_DGRAM;
+
+  addrinfo* res;
+  int err = getaddrinfo(ip_str.c_str(), nullptr, &hints, &res);
+
+  if (err != 0) {
+    freeaddrinfo(res);
+    throw std::invalid_argument("Failed to resolve IP/hostname: " + ip_str +
+                                " (" + gai_strerror(err) + ")");
   }
-  ip = ntohl(addr.s_addr); // convert from network to host byte order
+
+  // Cast to sockaddr_in and extract address
+  sockaddr_in* ipv4 = reinterpret_cast<sockaddr_in*>(res->ai_addr);
+  ip = ntohl(ipv4->sin_addr.s_addr); 
+
+  freeaddrinfo(res);
 }
 
 std::size_t PeerID::Hash::operator()(const PeerID& pid) const {
