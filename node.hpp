@@ -74,7 +74,9 @@ class Node {
   template<typename arg_t, typename... args_t>
   void log(arg_t&& arg, args_t&&... args) {
     if constexpr (enable_logging) {
-      std::cout << "At " << now() << " ms. " << std::forward<arg_t>(arg);
+      auto myTime = diff(Clock::now(), bootTime);
+      std::cout << "At local/offset " << myTime << "/" << now() << " ms. "
+      << std::forward<arg_t>(arg);
       // Fold expression for remaining arguments
       ((std::cout << std::forward<args_t>(args)), ...);
       std::cout << '\n';

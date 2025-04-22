@@ -16,12 +16,15 @@ void Node::run() {
   while (!stop_requested.load()) {
     auto now = Clock::now();
 
-    if (isLeader() && leaderStart != TimePoint{} && diff(now, leaderStart) > SYNC_START_DELAY) {
+    // whether the next SYNC_START must be as a leader (after SYNC_START_DELAY).
+    bool isLeaderSyncTurn = isLeader() && leaderStart != TimePoint{};
+
+    if (isLeaderSyncTurn && diff(now, leaderStart) > SYNC_START_DELAY) {
       log("Me a leader starts syncing");
       socket.setReadTimeOut(SYNC_INTERVAL);
       leaderStart = TimePoint{};
       sendSyncStart();
-    } else if (syncLevel < MAX_SYNC_LEVEL && diff(now, lastSyncSent) > SYNC_INTERVAL) {
+    } else if (!isLeaderSyncTurn && syncLevel < MAX_SYNC_LEVEL && diff(now, lastSyncSent) > SYNC_INTERVAL) {
       log("Syncing start");
       sendSyncStart();
     } else if (!isLeader() && diff(now, lastGoodSync) > SYNC_TIMEOUT) {
