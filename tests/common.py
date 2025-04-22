@@ -72,13 +72,17 @@ def get_times(
             while not stop_event.is_set():
                 packet = bytes([Message.GET_TIME])
                 for host, port in targets:
+                    if stop_event.is_set(): 
+                        break
                     try:
                         sock.sendto(packet, (host, port))
-                    except timeout:
+                    except socket.timeout:
                         print(f"Timeout on send to {host}:{port}", file=sys.stderr)
 
                 file.write("-----------------------------------------\n")
-                for _ in range(len(targets)):                
+                for _ in range(len(targets)):   
+                    if stop_event.is_set(): 
+                        break             
                     try:
                         data, addr = sock.recvfrom(4096)
                         if not data or data[0] != Message.TIME or len(data) != 10:
@@ -88,7 +92,43 @@ def get_times(
                             timestamp = int.from_bytes(data[2:], byteorder='big')
                             file.write(f"Got from: {addr}, sync_level: {data[1]} time: {timestamp} ms.\n")
 
-                    except timeout:
+                    except socket.timeout:
                         print(f"Timeout on recvfrom", file=sys.stderr)
                 file.flush()
                 sleep(send_interval)
+
+
+def get_booted_pcs():
+    """
+        Runs the command `lk_booted_pcs`.
+        Expects the output of the form:
+        +--------------+----------------+
+        | Name         | Address        |
+        +--------------+----------------+
+        | red12        | 10.1.1.32      |
+        | pink03       | 10.1.1.41      |
+        +--------------+----------------+
+
+        Returns two dictionaries
+    """
+    result = subprocess.run(['lk_booted_pcs'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    
+    if result.returncode != 0:
+        print(f"Error running command: {result.stderr}")
+        return {}
+
+    data = result.stdout.strip().split('\n')
+
+    name_address = {}
+    address_name = {}
+
+    for line in data:
+        line = line.strip()
+        if not line or line.startswith('+') or line.startswith('-'):
+            continue
+        parts = [part.strip() for part in line.split('|') if part.strip() != '']
+
+        if len(parts) == 2 and parts[0] != "Name":
+            name, address = parts
+            name_address[name] = address
+            address_name[address] = name
