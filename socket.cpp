@@ -23,7 +23,6 @@ Socket::Socket(std::optional<std::string> ip, uint16_t port) {
     exit(1);
   }
 
-
   sockaddr_in addr {};
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port);

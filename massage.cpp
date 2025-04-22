@@ -16,6 +16,10 @@ message_t Message::makeHello() {
 }
 
 message_t Message::makeHelloReply(const peer_set_t& peers) {
+  if (peers.size() > MAX_PEERS) {
+    throw std::invalid_argument("Too many peers for one message");
+  }
+
   message_t msg;
   msg.push_back(toByte(Type::HELLO_REPLY));
 
@@ -23,11 +27,6 @@ message_t Message::makeHelloReply(const peer_set_t& peers) {
   msg.insert(msg.end(), reinterpret_cast<uint8_t*>(&count),
                         reinterpret_cast<uint8_t*>(&count) + sizeof(count));
   
-  if (peers.size() > MAX_PEERS) {
-    Message::logError(msg);
-    throw std::invalid_argument("Too many peers for one message");
-  }
-
   for (const auto& peer : peers) {
     add_peer(msg, peer);
   }
@@ -91,7 +90,9 @@ std::pair<sync_level_t, timestamp_t> Message::parseDelayResponse(const message_t
 sync_level_t Message::parseLeader(const message_t& msg) {
   const size_t expectedSize = sizeof(message_type_t) + sizeof(sync_level_t);
 
-  if (msg.size() != expectedSize || Message::type(msg) != Type::LEADER) {
+  if (msg.size() != expectedSize || Message::type(msg) != Type::LEADER ||
+      (msg[1] != SYNC_LEVEL_LEADER && msg[1] != SYNC_LEVEL_UNSYNCED)) {
+        
     logError(msg);
     throw std::runtime_error("Invalid LEADER message");
   }

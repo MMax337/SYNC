@@ -7,7 +7,7 @@
 
 class Node {
  public:
-  Node(const std::optional<std::string>& bind_address, const uint16_t port, std::optional<PeerID> peer);
+  Node(const std::optional<std::string>& bind_address, const peer_port_t port, std::optional<PeerID> peer);
   ~Node() = default;
 
   void run();
@@ -16,8 +16,6 @@ class Node {
   static constexpr auto SYNC_INTERVAL    = std::chrono::seconds(5);
   static constexpr auto SYNC_TIMEOUT     = std::chrono::seconds(20);
 
-
-  static auto constexpr SYNC_TIME = 5;
   struct SyncInfo {
     timestamp_t T1;
     timestamp_t T2;
@@ -27,6 +25,7 @@ class Node {
     PeerID master;
     sync_level_t master_lvl;
     bool active = false;
+    TimePoint lastContact = TimePoint{};
   };
 
   Socket socket;
@@ -74,9 +73,10 @@ class Node {
   template<typename arg_t, typename... args_t>
   void log(arg_t&& arg, args_t&&... args) {
     if constexpr (enable_logging) {
-      auto myTime = diff(Clock::now(), bootTime);
+      auto myTime = diff(Clock::now(), bootTime).count();
       std::cout << "At local/offset " << myTime << "/" << now() << " ms. "
-      << std::forward<arg_t>(arg);
+                << "SyncLevel: " << static_cast<int>(syncLevel) << ". "
+                << std::forward<arg_t>(arg);
       // Fold expression for remaining arguments
       ((std::cout << std::forward<args_t>(args)), ...);
       std::cout << '\n';

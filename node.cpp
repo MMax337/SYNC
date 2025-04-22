@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-Node::Node(const std::optional<std::string>& bind_address, const uint16_t port, std::optional<PeerID> peer)
+Node::Node(const std::optional<std::string>& bind_address, const peer_port_t port, std::optional<PeerID> peer)
   : socket(bind_address, port), helloPeer(peer), bootTime(Clock::now()) {
   socket.setReadTimeOut(SYNC_INTERVAL);
 }
@@ -19,6 +19,11 @@ void Node::run() {
     // whether the next SYNC_START must be as a leader (after SYNC_START_DELAY).
     bool isLeaderSyncTurn = isLeader() && leaderStart != TimePoint{};
 
+    if (syncInfo.active && diff(now, syncInfo.lastContact) > SYNC_INTERVAL) {
+      // Long time without response, stop synchronizing with the node. 
+      syncInfo.active = false;
+    } 
+    
     if (isLeaderSyncTurn && diff(now, leaderStart) > SYNC_START_DELAY) {
       log("Me a leader starts syncing");
       socket.setReadTimeOut(SYNC_INTERVAL);
@@ -120,7 +125,7 @@ void Node::handleLeader(const message_t& msg) {
 
   if (sync == SYNC_LEVEL_LEADER) {
     becomeLeader();
-  } else if (sync == SYNC_LEVEL_UNSYNCED && syncLevel == SYNC_LEVEL_LEADER) {
+  } else if (isLeader() && sync == SYNC_LEVEL_UNSYNCED) {
     stopBeingLeader();
   } else {
     Message::logError(msg);
@@ -138,14 +143,19 @@ void Node::handleSyncStart(const Socket::ReceivedMessage& msg) {
     lastGoodSync = T2;
   }
 
-  if (syncInfo.active || !peers.contains(from) || lvl >= MAX_SYNC_LEVEL ||
-      (!mySyncPartner && lvl + 2 > syncLevel)) {
+  if (!peers.contains(from)) {
     Message::logError(data);
     return;
   }
 
+  if (syncInfo.active || lvl >= MAX_SYNC_LEVEL || (!mySyncPartner && lvl + 2 > syncLevel)) {
+    // ignore the message.
+    return;
+  }
+
   if (mySyncPartner && lvl >= syncLevel) {
-    Message::logError(data);
+    log("GOT SYNC_START from node I am synced with: ", from,
+        " with the sync level ", static_cast<int>(lvl));
     becomeUnsync();
     return;
   }
@@ -162,20 +172,24 @@ void Node::handleSyncStart(const Socket::ReceivedMessage& msg) {
   log("Sending DELAY_REQUEST to ", from);
   auto delayRequest = Message::makeDelayRequest();
   syncInfo.T3 = now();
+  syncInfo.lastContact = Clock::now();
   socket.sendTo(delayRequest, from);
 }
 
 void Node::becomeLeader() {
   syncLevel = SYNC_LEVEL_LEADER;
+  offsetMs = 0;
+  syncedWith.reset();
   leaderStart = Clock::now();
   socket.setReadTimeOut(SYNC_START_DELAY);
+  syncInfo.active = false;
   
   log("Became a leader");
 }
 
 void Node::stopBeingLeader() {
-  becomeUnsync();
   log("Stopped being a leader");
+  becomeUnsync();
 }
 
 void Node::sendTime(const PeerID& target) {
