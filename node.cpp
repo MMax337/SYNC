@@ -92,7 +92,7 @@ void Node::sendAckConnect(const PeerID& target) {
 void Node::sendSyncStart() {
   lastSyncSent = Clock::now();
   for (const auto& peer : peers) {
-    log("Sending SYNC_CONNECT to ", peer);
+    log("Sending SYNC_START to ", peer);
     auto msg = Message::makeSyncStart(syncLevel, now());
     socket.sendTo(msg, peer);
   }
