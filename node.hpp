@@ -32,10 +32,11 @@ class Node {
   Socket socket;
   sync_level_t syncLevel = SYNC_LEVEL_UNSYNCED;
   std::optional<PeerID> helloPeer = std::nullopt;
+  std::optional<PeerID> syncedWith = std::nullopt;
+  
   peer_set_t peers;
-  peer_set_t synced_peers; // Peers to whom the CONNECT was sent and waiting for ACK_CONNECT
   peer_set_t ack_required_peers; // Peers to whom the CONNECT was sent and waiting for ACK_CONNECT
-  int64_t offsetMs = 0;
+  timestamp_t offsetMs = 0;
   SyncInfo syncInfo;
   const TimePoint bootTime;
 
@@ -68,14 +69,14 @@ class Node {
   // Time including offset
   timestamp_t now();
   timestamp_t toTimestamp(TimePoint t);
-  std::chrono::seconds diff(TimePoint a, TimePoint b);
+  std::chrono::milliseconds diff(TimePoint a, TimePoint b);
 
   template<typename arg_t, typename... args_t>
   void log(arg_t&& arg, args_t&&... args) {
     if constexpr (enable_logging) {
       std::cout << "At " << now() << " ms. " << std::forward<arg_t>(arg);
       // Fold expression for remaining arguments
-      ((std::cout << ", " << std::forward<args_t>(args)), ...);
+      ((std::cout << std::forward<args_t>(args)), ...);
       std::cout << '\n';
     }
   }

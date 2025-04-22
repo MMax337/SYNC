@@ -20,7 +20,5 @@ struct PeerID {
   struct Hash {
     std::size_t operator()(const PeerID& pid) const;
   };
-
-
 };
 

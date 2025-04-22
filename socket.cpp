@@ -63,6 +63,7 @@ void Socket::sendTo(message_t& message, const PeerID& peer) {
   ssize_t sent = sendto(sockfd, message.data(), message.size(), 0,
                         reinterpret_cast<const sockaddr*>(&destAddr), sizeof(destAddr));
   if (sent < 0) {
+    if (errno == EINTR) return;
     error("sendto ", std::strerror(errno));
     exit(1);
   }
@@ -79,7 +80,7 @@ std::optional<Socket::ReceivedMessage> Socket::recvFrom() {
                               reinterpret_cast<sockaddr*>(&senderAddr), &addrLen);
 
   if (received < 0) {
-    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
       return std::nullopt; // Timeout occurred
     } else {
       error("recvfrom ", std::strerror(errno));

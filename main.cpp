@@ -2,10 +2,11 @@
 #include <string>
 #include <optional>
 #include <cstdlib>
+#include <csignal>
 
 #include "node.hpp"
 
-bool is_valid_port(const std::string& s, bool allow_zero = true) {
+static bool is_valid_port(const std::string& s, bool allow_zero = true) {
   try {
     int port = std::stoi(s);
     return allow_zero ? (port >= 0 && port <= 65535)
@@ -15,12 +16,18 @@ bool is_valid_port(const std::string& s, bool allow_zero = true) {
   }
 }
 
+static void signal_handler(int) {
+  stop_requested.store(true, std::memory_order_relaxed);
+}
+
 int main(int argc, char* argv[]) {
+  std::signal(SIGINT, signal_handler);
+
   int port = 0;
 
   std::optional<std::string> bind_address = std::nullopt;
   std::optional<std::string> peer_address = std::nullopt;
-  std::optional<uint16_t> peer_port = std::nullopt;
+  std::optional<peer_port_t> peer_port = std::nullopt;
 
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];

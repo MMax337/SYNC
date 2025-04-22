@@ -5,8 +5,7 @@ LDFLAGS :=
 # Source files and output binary
 SRCS := $(wildcard *.cpp)
 OBJS := $(SRCS:.cpp=.o)
-TARGET := peer-time-sync.out
-# TARGET := main.out
+TARGET := peer-time-sync
 
 
 all: $(TARGET)

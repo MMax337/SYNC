@@ -1,5 +1,8 @@
 .vscode
 
+# code binary:
+peer-time-sync
+
 # Prerequisites
 *.d
 
