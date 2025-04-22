@@ -77,14 +77,14 @@ def main():
             time.sleep(1)
     except KeyboardInterrupt:
         pass
-
+    
+    stop_event.set()
     print("Terminating processes...")
     for p in node_processes:
         p.terminate()
         p.wait()
         print(f"exit code: {p.returncode}")
 
-    stop_event.set()
     listener_thread.join()
     print("Test finished.")
 

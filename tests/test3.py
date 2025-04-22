@@ -59,13 +59,14 @@ def main():
             send_leader(targets[current_leader_index][0], targets[current_leader_index][1], 0)
     except KeyboardInterrupt:
         pass
-
+    
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
         pass
-
+    
+    stop_event.set()
     print("Terminating processes...")
     for p in node_processes:
         p.terminate()

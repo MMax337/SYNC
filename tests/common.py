@@ -94,6 +94,7 @@ def get_times(
 
                     except socket.timeout:
                         print(f"Timeout on recvfrom", file=sys.stderr)
+                        
                 file.flush()
                 sleep(send_interval)
 
