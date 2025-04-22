@@ -87,6 +87,8 @@ void Node::sendAckConnect(const PeerID& target) {
   log("Sending ACK_CONNECT to ", target);
   auto msg = Message::makeAckConnect();
   socket.sendTo(msg, target);
+
+  peers.insert(target);
 }
 
 void Node::sendSyncStart() {
@@ -230,7 +232,6 @@ void Node::handleMessage(const Socket::ReceivedMessage& msg) {
     case Message::Type::CONNECT:
       log("Got CONNECT from: ", from);
       sendAckConnect(from);
-      peers.insert(from);
       break;
     case Message::Type::ACK_CONNECT:
       handleAckConnect(data, from);
