@@ -55,6 +55,10 @@ Socket::~Socket() {
 }
 
 void Socket::sendTo(message_t& message, const PeerID& peer) {
+  if (stop_requested.load()) {
+    return;
+  }
+
   sockaddr_in destAddr{};
   destAddr.sin_family = AF_INET;
   destAddr.sin_addr.s_addr = htonl(peer.ip);
@@ -70,6 +74,10 @@ void Socket::sendTo(message_t& message, const PeerID& peer) {
 }
 
 std::optional<Socket::ReceivedMessage> Socket::recvFrom() {
+  if (stop_requested.load()) {
+    return std::nullopt;
+  }
+
   message_t buffer;
   buffer.resize(std::numeric_limits<uint16_t>::max());
 

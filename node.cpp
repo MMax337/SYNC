@@ -31,7 +31,11 @@ void Node::run() {
 
     auto msg = socket.recvFrom();
     if (msg.has_value()) {
-      handleMessage(msg.value());
+      try {
+        handleMessage(msg.value());
+      } catch (std::runtime_error& e) {
+        // Ignore the message.
+      }
     }
   }
 }
@@ -43,23 +47,30 @@ void Node::sendHello(const PeerID& target) {
 }
 
 void Node::sendHelloReply(const PeerID& target) {
-  log("Sending HELLO_REPLY to ", target);
+  if (peers.contains(target)) {
+    peers.erase(target);
+  }
+  log("Sending HELLO_REPLY to ", target, " peers num: ", peers.size());
 
   auto msg = Message::makeHelloReply(peers);
   socket.sendTo(msg, target);
+
+  peers.insert(target);
 }
 
 void Node::handleHelloReply(const message_t& msg, const PeerID& from) {
-  log("Got HELLO_REPLY from: ", from);
-
   if (!helloPeer.has_value() || helloPeer.value() != from) {
-    error("got hello reply from wrong node: ", from);
+    Message::logError(msg);
     return;
   }
+
   peers.insert(from);
   helloPeer = std::nullopt; // set peer to nullopt because HELLO_REPLY is no longer expected.
 
   ack_required_peers = Message::parseHelloReply(msg);
+
+  log("Got HELLO_REPLY from: ", from, " peers count: ", ack_required_peers.size());
+
   for (const auto& peer : ack_required_peers) {
     sendConnect(peer);
   }
@@ -87,9 +98,9 @@ void Node::sendSyncStart() {
   }
 }
 
-void Node::handleAckConnect(const PeerID& from) {
+void Node::handleAckConnect(const message_t& msg, const PeerID& from) {
   if (!ack_required_peers.contains(from)) {
-    error("got unexpected ACK_CONNECT");
+    Message::logError(msg);
     return;
   }
 
@@ -105,7 +116,7 @@ void Node::handleLeader(const message_t& msg) {
   } else if (sync == SYNC_LEVEL_UNSYNCED && syncLevel == SYNC_LEVEL_LEADER) {
     stopBeingLeader();
   } else {
-    error("BAD LEADER MESSAGE");
+    Message::logError(msg);
   }
 }
 
@@ -114,25 +125,21 @@ void Node::handleSyncStart(const Socket::ReceivedMessage& msg) {
   
   auto [lvl, T1] = Message::parseSyncStart(data);
 
-  bool amISyncedWith = syncedWith.has_value() && syncedWith.value() == from;
+  bool mySyncPartner = syncedWith.has_value() && syncedWith.value() == from;
 
-  if (amISyncedWith && lvl < syncLevel) {
+  if (mySyncPartner && lvl < syncLevel) {
     lastGoodSync = T2;
   }
 
-  if (syncInfo.active) {
+  if (syncInfo.active || !peers.contains(from) || lvl >= MAX_SYNC_LEVEL ||
+      (!mySyncPartner && lvl + 2 > syncLevel)) {
+    Message::logError(data);
     return;
   }
 
-  if (!peers.contains(from) || lvl >= MAX_SYNC_LEVEL) {
-    error("Got wrong SYNC_START from: ", from, " lvl: ", static_cast<int>(lvl));
-    return;
-  } else if (amISyncedWith && lvl >= syncLevel) {
-    error("Got worse SYNC_START start from: ", from, " lvl: ", static_cast<int>(lvl));
+  if (mySyncPartner && lvl >= syncLevel) {
+    Message::logError(data);
     becomeUnsync();
-    return;
-  } else if (!amISyncedWith && lvl + 2 > syncLevel) {
-    error("Got worse SYNC_START start from: ", from, " lvl: ", static_cast<int>(lvl));
     return;
   }
 
@@ -145,7 +152,7 @@ void Node::handleSyncStart(const Socket::ReceivedMessage& msg) {
   syncInfo.T1 = T1;
   syncInfo.T2 = toTimestamp(T2) - offsetMs;
 
-  log("Sending DelayRequest to ", from);
+  log("Sending DELAY_REQUEST to ", from);
   auto delayRequest = Message::makeDelayRequest();
   syncInfo.T3 = now();
   socket.sendTo(delayRequest, from);
@@ -169,16 +176,18 @@ void Node::sendTime(const PeerID& target) {
   socket.sendTo(msg, target);
 }
 
-void Node::handleDelayRequest(const PeerID& from) {
+void Node::handleDelayRequest(const message_t& msg, const PeerID& from) {
   log("Got DELAY_REQUEST from: ", from);
 
   if (!peers.contains(from)) {
+    Message::logError(msg);
     return;
   }
 
   log("Sending DELAY_RESPONSE to: ", from);
-  auto msg = Message::makeDelayResponse(syncLevel, now());
-  socket.sendTo(msg, from);
+
+  auto response = Message::makeDelayResponse(syncLevel, now());
+  socket.sendTo(response, from);
 }
 
 void Node::handleDelayResponse(const Socket::ReceivedMessage& msg) {
@@ -212,8 +221,7 @@ void Node::handleMessage(const Socket::ReceivedMessage& msg) {
 
   switch (Message::type(data)) {
     case Message::Type::HELLO:
-      log("Got hello from: ", from);
-      peers.insert(from);
+      log("Got HELLO from: ", from);
       sendHelloReply(from);
       break;
     case Message::Type::HELLO_REPLY:
@@ -221,17 +229,17 @@ void Node::handleMessage(const Socket::ReceivedMessage& msg) {
       break;
     case Message::Type::CONNECT:
       log("Got CONNECT from: ", from);
-      peers.insert(from);
       sendAckConnect(from);
+      peers.insert(from);
       break;
     case Message::Type::ACK_CONNECT:
-      handleAckConnect(from);
+      handleAckConnect(data, from);
       break;
     case Message::Type::SYNC_START:
       handleSyncStart(msg);
       break;
     case Message::Type::DELAY_REQUEST:
-      handleDelayRequest(from);
+      handleDelayRequest(data, from);
       break;
     case Message::Type::DELAY_RESPONSE:
       handleDelayResponse(msg);

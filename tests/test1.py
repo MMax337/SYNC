@@ -1,13 +1,22 @@
 import threading
 import time
-import socket
 import os
 
 from common import LOGS_DIR, get_times, send_leader, start_node
 from threading import Thread
 
+"""
+    In this test, nodes are started with one second delay. 
+    Each node gets a reference to a previous node.
+    After all nodes have started, the LEADER message is sent to the first node.
+
+    Expected behaviour:
+        All nodes get synchronized with the leader.
+"""
+
+
 # Configuration
-NODES = 3
+NODES = 10
 GET_TIME_INTERVAL = 2  # seconds
 TIMES_LOG = os.path.join(LOGS_DIR, "times.txt")
 

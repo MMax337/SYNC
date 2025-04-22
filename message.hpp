@@ -52,9 +52,10 @@ class Message {
       (MAX_DATAGRAM - sizeof(message_type_t) - sizeof(peer_count_t)) / 
       (sizeof(peer_addr_len_t) + sizeof(peer_ip_t) + sizeof(peer_port_t));
 
+  static std::pair<sync_level_t, timestamp_t> parseTimeSyncMessage(const message_t& msg, Type expected);
   static uint8_t toByte(Type t);
   static void add_peer(message_t& msg, const PeerID& peer);
-  static void add_time(message_t& msg, int64_t host_time);
+  static void add_time(message_t& msg, timestamp_t host_time);
 
 
 };

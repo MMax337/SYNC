@@ -51,11 +51,11 @@ class Node {
   void sendSyncStart();
   void sendTime(const PeerID& target);
 
-  void handleHelloReply(const message_t& mess, const PeerID& from);
-  void handleAckConnect(const PeerID& from);
+  void handleHelloReply(const message_t& msg, const PeerID& from);
+  void handleAckConnect(const message_t& msg, const PeerID& from);
   void handleSyncStart(const Socket::ReceivedMessage& msg);
   void handleLeader(const message_t& msg);
-  void handleDelayRequest(const PeerID& from);
+  void handleDelayRequest(const message_t& msg, const PeerID& from);
   void handleDelayResponse(const Socket::ReceivedMessage& msg);
 
   void handleMessage(const Socket::ReceivedMessage& msg);

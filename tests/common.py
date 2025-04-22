@@ -73,7 +73,6 @@ def get_times(
                 packet = bytes([Message.GET_TIME])
                 for host, port in targets:
                     try:
-                        file.write(f"sending to packet, ({host}, {port})\n")
                         sock.sendto(packet, (host, port))
                     except timeout:
                         print(f"Timeout on send to {host}:{port}", file=sys.stderr)

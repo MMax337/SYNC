@@ -22,6 +22,7 @@ static void signal_handler(int) {
 
 int main(int argc, char* argv[]) {
   std::signal(SIGINT, signal_handler);
+  std::signal(SIGTERM, signal_handler);
 
   int port = 0;
 
@@ -70,7 +71,12 @@ int main(int argc, char* argv[]) {
     peer = PeerID(peer_address.value(), peer_port.value());
   }
   
-  Node node = Node(bind_address, port, peer);
-  node.run();
+  try {
+    Node node = Node(bind_address, port, peer);
+    node.run();
+  } catch (...) {
+    return 1;
+  }
+
   return 0;
 }
