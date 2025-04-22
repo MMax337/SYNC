@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <fcntl.h>
 
 
 Socket::Socket(std::optional<std::string> ip, uint16_t port) {
@@ -15,6 +16,13 @@ Socket::Socket(std::optional<std::string> ip, uint16_t port) {
     error("socket ", std::strerror(errno));
     exit(1);
   }
+
+  // Set socket to nonblocking mode.
+  if (fcntl(sockfd, F_SETFL, O_NONBLOCK) < 0) {
+    error("socket ", std::strerror(errno));
+    exit(1);
+  }
+
 
   sockaddr_in addr {};
   addr.sin_family = AF_INET;
@@ -69,7 +77,7 @@ void Socket::sendTo(message_t& message, const PeerID& peer) {
   if (sent < 0) {
     if (errno == EINTR) return;
     error("sendto ", std::strerror(errno));
-    exit(1);
+    throw std::runtime_error("sendto");
   }
 }
 

@@ -54,11 +54,13 @@ void Node::sendHelloReply(const PeerID& target) {
     peers.erase(target);
   }
   log("Sending HELLO_REPLY to ", target, " peers num: ", peers.size());
+  try {
+    auto msg = Message::makeHelloReply(peers);
+    socket.sendTo(msg, target);
+  
+    peers.insert(target);
+  } catch (std::invalid_argument& e) {}
 
-  auto msg = Message::makeHelloReply(peers);
-  socket.sendTo(msg, target);
-
-  peers.insert(target);
 }
 
 void Node::handleHelloReply(const message_t& msg, const PeerID& from) {

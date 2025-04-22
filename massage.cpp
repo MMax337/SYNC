@@ -16,16 +16,17 @@ message_t Message::makeHello() {
 }
 
 message_t Message::makeHelloReply(const peer_set_t& peers) {
-  if (peers.size() > MAX_PEERS) {
-    throw std::invalid_argument("Too many peers for one message");
-  }
-
   message_t msg;
   msg.push_back(toByte(Type::HELLO_REPLY));
 
   peer_count_t count = htons(static_cast<peer_count_t>(peers.size()));
   msg.insert(msg.end(), reinterpret_cast<uint8_t*>(&count),
                         reinterpret_cast<uint8_t*>(&count) + sizeof(count));
+  
+  if (peers.size() > MAX_PEERS) {
+    Message::logError(msg);
+    throw std::invalid_argument("Too many peers for one message");
+  }
 
   for (const auto& peer : peers) {
     add_peer(msg, peer);
