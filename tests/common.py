@@ -7,7 +7,7 @@ import sys
 import threading
 from time import sleep
 
-PROGRAM_NAME = './peer-time-sync'
+PROGRAM = os.path.join('..', 'src', 'peer-time-sync')
 LOGS_DIR = "LOGS"
 Path(LOGS_DIR).mkdir(exist_ok=True)
 
@@ -18,8 +18,8 @@ class Message(IntEnum):
     TIME = 32
 
 def start_node(port: int, bind_address: str = None, peer_address: str = None, peer_port: int = None) -> subprocess.Popen:
-    # args = ['valgrind', '--leak-check=full', f'../{PROGRAM_NAME}']
-    args = [f'../{PROGRAM_NAME}']
+    # args = ['valgrind', '--leak-check=full', f'../{PROGRAM}']
+    args = [f'{PROGRAM}']
 
     if bind_address:
         args += ['-b', bind_address]
