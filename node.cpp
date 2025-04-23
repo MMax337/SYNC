@@ -3,7 +3,8 @@
 
 #include <iostream>
 
-Node::Node(const std::optional<std::string>& bind_address, const peer_port_t port, std::optional<PeerID> peer)
+Node::Node(const std::optional<std::string>& bind_address,
+           const peer_port_t port, std::optional<PeerID> peer)
   : socket(bind_address, port), helloPeer(peer), bootTime(Clock::now()) {
   socket.setReadTimeOut(SYNC_INTERVAL);
 }
@@ -29,7 +30,8 @@ void Node::run() {
       socket.setReadTimeOut(SYNC_INTERVAL);
       leaderStart = TimePoint{};
       sendSyncStart();
-    } else if (!isLeaderSyncTurn && syncLevel < MAX_SYNC_LEVEL && diff(now, lastSyncSent) > SYNC_INTERVAL) {
+    } else if (!isLeaderSyncTurn && syncLevel < MAX_SYNC_LEVEL &&
+                diff(now, lastSyncSent) > SYNC_INTERVAL) {
       log("Syncing start");
       sendSyncStart();
     } else if (!isLeader() && diff(now, lastGoodSync) > SYNC_TIMEOUT) {
@@ -58,6 +60,7 @@ void Node::sendHelloReply(const PeerID& target) {
   if (peers.contains(target)) {
     peers.erase(target);
   }
+
   log("Sending HELLO_REPLY to ", target, " peers num: ", peers.size());
   try {
     auto msg = Message::makeHelloReply(peers);
@@ -143,13 +146,9 @@ void Node::handleSyncStart(const Socket::ReceivedMessage& msg) {
     lastGoodSync = T2;
   }
 
-  if (!peers.contains(from)) {
+  if (!peers.contains(from) || syncInfo.active || lvl >= MAX_SYNC_LEVEL || 
+      (!mySyncPartner && lvl + 2 > syncLevel)) {
     Message::logError(data);
-    return;
-  }
-
-  if (syncInfo.active || lvl >= MAX_SYNC_LEVEL || (!mySyncPartner && lvl + 2 > syncLevel)) {
-    // ignore the message.
     return;
   }
 
@@ -179,7 +178,8 @@ void Node::handleSyncStart(const Socket::ReceivedMessage& msg) {
 void Node::becomeLeader() {
   syncLevel = SYNC_LEVEL_LEADER;
   offsetMs = 0;
-  syncedWith.reset();
+  syncInfo.active = false;
+  syncedWith = std::nullopt;
   leaderStart = Clock::now();
   socket.setReadTimeOut(SYNC_START_DELAY);
   
@@ -221,13 +221,13 @@ void Node::handleDelayResponse(const Socket::ReceivedMessage& msg) {
 
   auto [lvl, T4] = Message::parseDelayResponse(data);
 
-  if (lvl != syncInfo.master_lvl) return;
-
+  if (lvl != syncInfo.master_lvl) {
+    Message::logError(data);
+    return;
+  }
 
   syncInfo.T4 = T4;
-  if (!isLeader()) {
-    offsetMs += (syncInfo.T2 - syncInfo.T1 + syncInfo.T3 - syncInfo.T4) / 2;
-  }
+  offsetMs += (syncInfo.T2 - syncInfo.T1 + syncInfo.T3 - syncInfo.T4) / 2;
 
   syncInfo.active = false;
   syncLevel = lvl + 1;

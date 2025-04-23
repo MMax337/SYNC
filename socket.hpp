@@ -20,8 +20,7 @@ class Socket {
   void sendTo(message_t& message, const PeerID& peer);
   std::optional<ReceivedMessage> recvFrom();
 
-  int getFd() const { return sockfd; }
-
  private:
   int sockfd;
+  message_t buffer;
 };

@@ -11,6 +11,7 @@
 
 
 Socket::Socket(std::optional<std::string> ip, uint16_t port) {
+  buffer.resize(std::numeric_limits<uint16_t>::max());
   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
   if (sockfd < 0) {
     error("socket ", std::strerror(errno));
@@ -76,7 +77,7 @@ void Socket::sendTo(message_t& message, const PeerID& peer) {
   if (sent < 0) {
     if (errno == EINTR) return;
     error("sendto ", std::strerror(errno));
-    throw std::runtime_error("sendto");
+    exit(1);
   }
 }
 
@@ -84,9 +85,6 @@ std::optional<Socket::ReceivedMessage> Socket::recvFrom() {
   if (stop_requested.load()) {
     return std::nullopt;
   }
-
-  message_t buffer;
-  buffer.resize(std::numeric_limits<uint16_t>::max());
 
   sockaddr_in senderAddr{};
   socklen_t addrLen = sizeof(senderAddr);
@@ -103,14 +101,15 @@ std::optional<Socket::ReceivedMessage> Socket::recvFrom() {
     }
   }
 
-  buffer.resize(received);
+  message_t data(buffer.begin(), buffer.begin() + received);
+
   PeerID sender;
   sender.ip = ntohl(senderAddr.sin_addr.s_addr);
   sender.port = ntohs(senderAddr.sin_port);
 
   return ReceivedMessage{
     .from = sender,
-    .data = std::move(buffer),
+    .data = std::move(data),
     .receivedAt = Clock::now()
   };
 }
