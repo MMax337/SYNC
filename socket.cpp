@@ -77,6 +77,7 @@ void Socket::sendTo(message_t& message, const PeerID& peer) {
   if (sent < 0) {
     if (errno == EINTR) return;
     error("sendto ", std::strerror(errno));
+    errno = 0;
     throw std::runtime_error("sendto");
   }
 }
@@ -94,6 +95,7 @@ std::optional<Socket::ReceivedMessage> Socket::recvFrom() {
 
   if (received < 0) {
     if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
+      errno = 0;
       return std::nullopt; // Timeout occurred
     } else {
       error("recvfrom ", std::strerror(errno));

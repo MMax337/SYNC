@@ -18,7 +18,9 @@ class Message(IntEnum):
     TIME = 32
 
 def start_node(port: int, bind_address: str = None, peer_address: str = None, peer_port: int = None) -> subprocess.Popen:
+    # args = ['valgrind', '--leak-check=full', f'../{PROGRAM_NAME}']
     args = [f'../{PROGRAM_NAME}']
+
     if bind_address:
         args += ['-b', bind_address]
     args += ['-p', str(port)]
