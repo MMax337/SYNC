@@ -126,3 +126,18 @@ void Socket::setReadTimeOut(std::chrono::seconds sec) {
     throw std::runtime_error("Error");
   }
 }
+
+std::pair<peer_ip_t, peer_port_t> Socket::getBoundAddressAndPort() {
+  sockaddr_in localAddr {};
+  socklen_t addrLen = sizeof(localAddr);
+
+  if (getsockname(sockfd, reinterpret_cast<sockaddr*>(&localAddr), &addrLen) < 0) {
+    error("getsockname: ", std::strerror(errno));
+    throw std::runtime_error("Error retrieving bound address and port");
+  }
+
+  peer_ip_t ip = ntohl(localAddr.sin_addr.s_addr);
+  peer_port_t port = ntohs(localAddr.sin_port);
+
+  return {ip, port};
+}

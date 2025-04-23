@@ -5,6 +5,7 @@ struct PeerID {
   peer_port_t port; // in host order
 
   PeerID() = default;
+  // Both `ip` and `port` expected in host order.
   PeerID(peer_ip_t ip, peer_port_t port) : ip(ip), port(port) {}
 
   PeerID(const std::string& ip_str, peer_port_t port);
