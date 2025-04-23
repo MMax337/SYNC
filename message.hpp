@@ -49,7 +49,7 @@ class Message {
   // MAX_PEERS calculates the maximum number of peers that can fit in the message, 
   // based on the message structure and size constraints.
   static constexpr uint16_t MAX_PEERS = 
-      (MAX_DATAGRAM - sizeof(message_type_t) - sizeof(peer_count_t)) / 
+      (MAX_DATAGRAM_PAYLOD - sizeof(message_type_t) - sizeof(peer_count_t)) / 
       (sizeof(peer_addr_len_t) + sizeof(peer_ip_t) + sizeof(peer_port_t));
 
   static std::pair<sync_level_t, timestamp_t> parseTimeSyncMessage(const message_t& msg, Type expected);

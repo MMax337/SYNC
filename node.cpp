@@ -182,7 +182,6 @@ void Node::becomeLeader() {
   syncedWith.reset();
   leaderStart = Clock::now();
   socket.setReadTimeOut(SYNC_START_DELAY);
-  syncInfo.active = false;
   
   log("Became a leader");
 }
@@ -215,7 +214,10 @@ void Node::handleDelayResponse(const Socket::ReceivedMessage& msg) {
   auto [from, data, receivedAt] = msg;
   log("Got DelayResposne, from: ", from);
 
-  if (!syncInfo.active || from != syncInfo.master) return;
+  if (!syncInfo.active || from != syncInfo.master) {
+    Message::logError(data);
+    return;
+  }
 
   auto [lvl, T4] = Message::parseDelayResponse(data);
 
@@ -223,9 +225,11 @@ void Node::handleDelayResponse(const Socket::ReceivedMessage& msg) {
 
 
   syncInfo.T4 = T4;
-  offsetMs += (syncInfo.T2 - syncInfo.T1 + syncInfo.T3 - syncInfo.T4) / 2;
-  syncInfo.active = false;
+  if (!isLeader()) {
+    offsetMs += (syncInfo.T2 - syncInfo.T1 + syncInfo.T3 - syncInfo.T4) / 2;
+  }
 
+  syncInfo.active = false;
   syncLevel = lvl + 1;
   syncedWith = from;
 

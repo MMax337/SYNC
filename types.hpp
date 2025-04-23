@@ -24,4 +24,4 @@ inline constexpr sync_level_t MAX_SYNC_LEVEL = 254;
 // Max number of bytes that can be put into UDP datagram in IPv4
 // - 8  for UDP header
 // - 20 for IP header 
-inline constexpr size_t MAX_DATAGRAM = std::numeric_limits<uint16_t>::max() - 8 - 20;
+inline constexpr size_t MAX_DATAGRAM_PAYLOD = std::numeric_limits<uint16_t>::max() - 8 - 20;
