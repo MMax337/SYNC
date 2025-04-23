@@ -7,9 +7,7 @@
 
 using Type = Message::Type;
 
-
 namespace {
-  constexpr size_t MAX_ERROR_BYTES = 10;
   // MAX_PEERS calculates the maximum number of peers that can fit in the message, 
   // based on the message structure and size constraints.
   constexpr peer_count_t MAX_PEERS = 

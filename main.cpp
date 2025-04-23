@@ -6,25 +6,26 @@
 
 #include "node.hpp"
                       
-static bool is_valid_port(const std::string& s, bool allow_zero = true) {
+static bool is_valid_port(const std::string& s, bool allowZero = true) {
   try {
     int port = std::stoi(s);
-    return allow_zero ? (port >= 0 && port <= std::numeric_limits<port_t>::max())
-                      : (port >  0 && port <= std::numeric_limits<port_t>::max());
-  } catch (...) {
+
+    return allowZero ? port >= 0 && port <= std::numeric_limits<port_t>::max()
+                     : port > 0  && port <= std::numeric_limits<port_t>::max();
+  } catch (const std::exception&) {
     return false;
   }
 }
 
 static void signal_handler(int) {
-  stop_requested.store(true, std::memory_order_relaxed);
+  stop.store(true, std::memory_order_relaxed);
 }
 
 int main(int argc, char* argv[]) {
   std::signal(SIGINT, signal_handler);
   std::signal(SIGTERM, signal_handler);
 
-  int port = 0;
+  port_t port = 0;
 
   std::optional<std::string> bind_address = std::nullopt;
   std::optional<std::string> peer_address = std::nullopt;
@@ -38,7 +39,7 @@ int main(int argc, char* argv[]) {
     } else if (arg == "-p" && i + 1 < argc) {
       std::string val = argv[++i];
       if (is_valid_port(val)) {
-        port = std::stoi(val);
+        port = static_cast<port_t>(std::stoul(val));
       } else {
         std::cerr << "Invalid port value for -p: " << val << "\n";
         return 1;
@@ -48,7 +49,7 @@ int main(int argc, char* argv[]) {
     } else if (arg == "-r" && i + 1 < argc) {
       std::string val = argv[++i];
       if (is_valid_port(val, false)) {
-        peer_port = std::stoi(val);
+        peer_port = static_cast<port_t>(std::stoul(val));
       } else {
         std::cerr << "Invalid peer port value for -r: " << val << "\n";
         return 1;

@@ -76,7 +76,7 @@ class Node {
 
   template<typename arg_t, typename... args_t>
   void log(arg_t&& arg, args_t&&... args) {
-    if constexpr (enable_logging) {
+    if constexpr (enableLogging) {
       auto myTime = diff(Clock::now(), bootTime).count();
       std::cout << "At local/offset " << myTime << "/" << now() << " ms. "
                 << "SyncLevel: " << static_cast<int>(syncLevel) << ". "

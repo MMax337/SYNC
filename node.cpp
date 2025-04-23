@@ -14,7 +14,7 @@ void Node::run() {
     sendHello(helloPeer.value());
   }
 
-  while (!stop_requested.load()) {
+  while (!stop.load()) {
     auto now = Clock::now();
 
     // whether the next SYNC_START must be as a leader (after SYNC_START_DELAY).

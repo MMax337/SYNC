@@ -20,6 +20,7 @@ namespace Message {
     GET_TIME = 31,
     TIME = 32,
   };
+  constexpr size_t MAX_ERROR_BYTES = 10;
 
   Type type(const message_t& data);
 
@@ -39,5 +40,6 @@ namespace Message {
   std::pair<sync_level_t, timestamp_t> parseDelayResponse(const message_t& msg);
   sync_level_t parseLeader(const message_t& msg);
 
+  // Prints the first `MAX_ERROR_BYTES` bytes of the message.
   void logError(const message_t& msg);
 };

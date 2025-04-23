@@ -12,7 +12,7 @@
 
 Socket::Socket(std::optional<std::string> ip, port_t port) {
   buffer.resize(MAX_DATAGRAM_SIZE);
-  
+
   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
   if (sockfd < 0) {
     error("socket ", std::strerror(errno));
@@ -64,7 +64,7 @@ Socket::~Socket() {
 }
 
 void Socket::sendTo(message_t& message, const PeerID& peer) {
-  if (stop_requested.load()) {
+  if (stop.load()) {
     return;
   }
 
@@ -84,7 +84,7 @@ void Socket::sendTo(message_t& message, const PeerID& peer) {
 }
 
 std::optional<Socket::ReceivedMessage> Socket::recvFrom() {
-  if (stop_requested.load()) {
+  if (stop.load()) {
     return std::nullopt;
   }
 
