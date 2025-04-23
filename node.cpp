@@ -111,7 +111,7 @@ void Node::sendSyncStart() {
       auto now = Clock::now();
       lastSyncSent = now;
       syncSent[peer] = now;
-    } catch (std::runtime_error) {}
+    } catch (std::runtime_error& e) {}
   }
 }
 
