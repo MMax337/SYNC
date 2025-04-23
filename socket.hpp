@@ -13,7 +13,7 @@ class Socket {
     message_t data;
     TimePoint receivedAt;
   };
-  Socket(std::optional<std::string> ip = std::nullopt, uint16_t port = 0);
+  Socket(std::optional<std::string> ip = std::nullopt, port_t port = 0);
   ~Socket();
 
   void setReadTimeOut(std::chrono::seconds sec);
@@ -21,7 +21,7 @@ class Socket {
   std::optional<ReceivedMessage> recvFrom();
 
   // Both address and port are returned in host byte order.
-  std::pair<peer_ip_t, peer_port_t> getBoundAddressAndPort();
+  std::pair<address_t, port_t> getBoundAddressAndPort();
 
 
  private:

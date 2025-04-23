@@ -3,7 +3,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-PeerID::PeerID(const std::string& ip_str, peer_port_t port) : port(port) {
+PeerID::PeerID(const std::string& ip_str, port_t port) : port(port) {
   addrinfo hints {};
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_DGRAM;
@@ -25,7 +25,7 @@ PeerID::PeerID(const std::string& ip_str, peer_port_t port) : port(port) {
 }
 
 std::size_t PeerID::Hash::operator()(const PeerID& pid) const {
-  return std::hash<peer_ip_t>()(pid.ip) ^ std::hash<peer_port_t>()(pid.port);
+  return std::hash<address_t>()(pid.ip) ^ std::hash<port_t>()(pid.port);
 }
 
 std::string PeerID::to_string() const {

@@ -39,8 +39,8 @@ message_t Message::makeHelloReply(const peer_set_t& peers) {
 
 peer_set_t Message::parseHelloReply(const message_t& msg) {
   const size_t minSize  = sizeof(message_type_t) + sizeof(peer_count_t);
-  const size_t peerInfo = sizeof(peer_addr_len_t) +
-                          sizeof(peer_port_t) + sizeof(peer_ip_t);
+  const size_t peerInfo = sizeof(address_len_t) +
+                          sizeof(port_t) + sizeof(address_t);
 
   if (msg.size() < minSize || Message::type(msg) != Type::HELLO_REPLY) {
     logError(msg);
@@ -60,18 +60,18 @@ peer_set_t Message::parseHelloReply(const message_t& msg) {
   }
 
   for (peer_count_t i = 0; i < count; ++i) {
-    uint8_t ipLength = msg[offset++];
-    if (ipLength != sizeof(peer_ip_t)) {
+    address_len_t ipLength = msg[offset++];
+    if (ipLength != sizeof(address_t)) {
       logError(msg);
       throw std::runtime_error("Invalid IP length in HELLO_REPLY");
     }
 
-    peer_ip_t ip;
+    address_t ip;
     std::memcpy(&ip, &msg[offset], sizeof(ip));
     ip = ntohl(ip);
     offset += sizeof(ip);
 
-    peer_port_t port;
+    port_t port;
     std::memcpy(&port, &msg[offset], sizeof(port));
     port = ntohs(port);
     offset += sizeof(port);
@@ -186,10 +186,10 @@ uint8_t Message::toByte(Type t) {
 }
 
 void Message::add_peer(message_t& msg, const PeerID& peer) {
-  peer_ip_t ip = htonl(peer.ip);
-  peer_port_t port = htons(peer.port);
+  address_t ip = htonl(peer.ip);
+  port_t port = htons(peer.port);
 
-  msg.push_back(static_cast<uint8_t>(sizeof(peer_ip_t)));
+  msg.push_back(static_cast<uint8_t>(sizeof(address_t)));
 
   msg.insert(msg.end(), reinterpret_cast<uint8_t*>(&ip),
                         reinterpret_cast<uint8_t*>(&ip) + sizeof(ip));

@@ -9,7 +9,7 @@
 
 class Node {
  public:
-  Node(const std::optional<std::string>& bind_address, const peer_port_t port, std::optional<PeerID> peer);
+  Node(const std::optional<std::string>& bind_address, const port_t port, std::optional<PeerID> peer);
   ~Node() = default;
 
   void run();

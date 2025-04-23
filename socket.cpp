@@ -10,8 +10,9 @@
 #include <fcntl.h>
 
 
-Socket::Socket(std::optional<std::string> ip, uint16_t port) {
-  buffer.resize(std::numeric_limits<uint16_t>::max());
+Socket::Socket(std::optional<std::string> ip, port_t port) {
+  buffer.resize(MAX_DATAGRAM_SIZE);
+  
   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
   if (sockfd < 0) {
     error("socket ", std::strerror(errno));
@@ -127,7 +128,7 @@ void Socket::setReadTimeOut(std::chrono::seconds sec) {
   }
 }
 
-std::pair<peer_ip_t, peer_port_t> Socket::getBoundAddressAndPort() {
+std::pair<address_t, port_t> Socket::getBoundAddressAndPort() {
   sockaddr_in localAddr {};
   socklen_t addrLen = sizeof(localAddr);
 
@@ -136,8 +137,8 @@ std::pair<peer_ip_t, peer_port_t> Socket::getBoundAddressAndPort() {
     throw std::runtime_error("Error retrieving bound address and port");
   }
 
-  peer_ip_t ip = ntohl(localAddr.sin_addr.s_addr);
-  peer_port_t port = ntohs(localAddr.sin_port);
+  address_t ip = ntohl(localAddr.sin_addr.s_addr);
+  port_t port = ntohs(localAddr.sin_port);
 
   return {ip, port};
 }

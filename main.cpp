@@ -5,12 +5,12 @@
 #include <csignal>
 
 #include "node.hpp"
-
+                      
 static bool is_valid_port(const std::string& s, bool allow_zero = true) {
   try {
     int port = std::stoi(s);
-    return allow_zero ? (port >= 0 && port <= 65535)
-                      : (port >= 1 && port <= 65535);
+    return allow_zero ? (port >= 0 && port <= std::numeric_limits<port_t>::max())
+                      : (port >  0 && port <= std::numeric_limits<port_t>::max());
   } catch (...) {
     return false;
   }
@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
 
   std::optional<std::string> bind_address = std::nullopt;
   std::optional<std::string> peer_address = std::nullopt;
-  std::optional<peer_port_t> peer_port = std::nullopt;
+  std::optional<port_t>      peer_port    = std::nullopt;
 
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
@@ -77,6 +77,6 @@ int main(int argc, char* argv[]) {
   } catch (...) {
     return 1;
   }
-  
+
   return 0;
 }
