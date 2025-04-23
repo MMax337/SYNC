@@ -3,6 +3,8 @@
 #include "socket.hpp"
 #include "common.hpp"
 #include <unordered_set>
+#include <unordered_map>
+
 
 
 class Node {
@@ -35,12 +37,14 @@ class Node {
   
   peer_set_t peers;
   peer_set_t ack_required_peers; // Peers to whom the CONNECT was sent and waiting for ACK_CONNECT
+  std::unordered_map<PeerID, TimePoint, PeerID::Hash> syncSent;
+
   timestamp_t offsetMs = 0;
   SyncInfo syncInfo;
   const TimePoint bootTime;
 
-  TimePoint lastSyncSent; // The time without offset.
-  TimePoint lastGoodSync;
+  TimePoint lastSyncSent; 
+  TimePoint lastGoodSync; // The last time got a SYNC_START from the node I am synced with.
   TimePoint leaderStart; // when a node became a leader.
 
   void sendHello(const PeerID& target);
@@ -54,7 +58,7 @@ class Node {
   void handleAckConnect(const message_t& msg, const PeerID& from);
   void handleSyncStart(const Socket::ReceivedMessage& msg);
   void handleLeader(const message_t& msg);
-  void handleDelayRequest(const message_t& msg, const PeerID& from);
+  void handleDelayRequest(const Socket::ReceivedMessage& data);
   void handleDelayResponse(const Socket::ReceivedMessage& msg);
 
   void handleMessage(const Socket::ReceivedMessage& msg);

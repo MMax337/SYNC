@@ -77,7 +77,7 @@ void Socket::sendTo(message_t& message, const PeerID& peer) {
   if (sent < 0) {
     if (errno == EINTR) return;
     error("sendto ", std::strerror(errno));
-    exit(1);
+    throw std::runtime_error("sendto");
   }
 }
 

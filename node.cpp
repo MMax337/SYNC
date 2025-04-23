@@ -65,10 +65,8 @@ void Node::sendHelloReply(const PeerID& target) {
   try {
     auto msg = Message::makeHelloReply(peers);
     socket.sendTo(msg, target);
-  
-    peers.insert(target);
   } catch (std::invalid_argument& e) {}
-
+  peers.insert(target);
 }
 
 void Node::handleHelloReply(const message_t& msg, const PeerID& from) {
@@ -105,11 +103,15 @@ void Node::sendAckConnect(const PeerID& target) {
 }
 
 void Node::sendSyncStart() {
-  lastSyncSent = Clock::now();
   for (const auto& peer : peers) {
     log("Sending SYNC_START to ", peer);
-    auto msg = Message::makeSyncStart(syncLevel, now());
-    socket.sendTo(msg, peer);
+    try {
+      auto msg = Message::makeSyncStart(syncLevel, now());
+      socket.sendTo(msg, peer);
+      auto now = Clock::now();
+      lastSyncSent = now;
+      syncSent[peer] = now;
+    } catch (std::runtime_error) {}
   }
 }
 
@@ -146,7 +148,7 @@ void Node::handleSyncStart(const Socket::ReceivedMessage& msg) {
     lastGoodSync = T2;
   }
 
-  if (!peers.contains(from) || syncInfo.active || lvl >= MAX_SYNC_LEVEL || 
+  if (!peers.contains(from) || syncInfo.active || lvl >= MAX_SYNC_LEVEL ||
       (!mySyncPartner && lvl + 2 > syncLevel)) {
     Message::logError(data);
     return;
@@ -196,10 +198,13 @@ void Node::sendTime(const PeerID& target) {
   socket.sendTo(msg, target);
 }
 
-void Node::handleDelayRequest(const message_t& msg, const PeerID& from) {
+void Node::handleDelayRequest(const Socket::ReceivedMessage& data) {
+  auto& [from, msg, receivedAt] = data;
+
   log("Got DELAY_REQUEST from: ", from);
 
-  if (!peers.contains(from)) {
+  if (!peers.contains(from) || !syncSent.contains(from) ||
+      diff(receivedAt, syncSent[from]) > SYNC_INTERVAL) {
     Message::logError(msg);
     return;
   }
@@ -211,7 +216,7 @@ void Node::handleDelayRequest(const message_t& msg, const PeerID& from) {
 }
 
 void Node::handleDelayResponse(const Socket::ReceivedMessage& msg) {
-  auto [from, data, receivedAt] = msg;
+  auto& [from, data, receivedAt] = msg;
   log("Got DelayResposne, from: ", from);
 
   if (!syncInfo.active || from != syncInfo.master) {
@@ -263,7 +268,7 @@ void Node::handleMessage(const Socket::ReceivedMessage& msg) {
       handleSyncStart(msg);
       break;
     case Message::Type::DELAY_REQUEST:
-      handleDelayRequest(data, from);
+      handleDelayRequest(msg);
       break;
     case Message::Type::DELAY_RESPONSE:
       handleDelayResponse(msg);
