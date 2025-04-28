@@ -1,5 +1,5 @@
 CXX := g++
-CXXFLAGS := -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 #-DDEBUG
+CXXFLAGS := -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2
 LDFLAGS :=
 
 # Source files and output binary
@@ -7,8 +7,10 @@ SRCS := $(wildcard *.cpp)
 OBJS := $(SRCS:.cpp=.o)
 TARGET := peer-time-sync
 
-
 all: $(TARGET)
+
+debug: CXXFLAGS += -DDEBUG -g
+debug: $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $^

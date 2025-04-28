@@ -17,13 +17,13 @@ Socket::Socket(std::optional<std::string> ip, port_t port) {
   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
   if (sockfd < 0) {
     error("socket ", std::strerror(errno));
-    exit(1);
+    exit(ERROR_EXIT_CODE);
   }
 
   // Set socket to nonblocking mode.
   if (fcntl(sockfd, F_SETFL, O_NONBLOCK) < 0) {
     error("socket ", std::strerror(errno));
-    exit(1);
+    exit(ERROR_EXIT_CODE);
   }
 
   sockaddr_in addr {};
@@ -43,7 +43,7 @@ Socket::Socket(std::optional<std::string> ip, port_t port) {
     if (err != 0) {
       error("getaddrinfo failed for ", ip.value(), ": ", gai_strerror(err));
       freeaddrinfo(res);
-      exit(1);
+      exit(ERROR_EXIT_CODE);
     }
 
     sockaddr_in* resolved = reinterpret_cast<sockaddr_in*>(res->ai_addr);
@@ -54,7 +54,7 @@ Socket::Socket(std::optional<std::string> ip, port_t port) {
 
   if (bind(sockfd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0) {
     error("INVALID bind ", std::strerror(errno));
-    exit(1);
+    exit(ERROR_EXIT_CODE);
   }
 }
 
@@ -65,7 +65,7 @@ Socket::~Socket() {
 }
 
 void Socket::sendTo(message_t& message, const PeerID& peer) {
-  if (stop.load()) {
+  if (STOP.load()) {
     return;
   }
 
@@ -85,7 +85,7 @@ void Socket::sendTo(message_t& message, const PeerID& peer) {
 }
 
 std::optional<Socket::ReceivedMessage> Socket::recvFrom() {
-  if (stop.load()) {
+  if (STOP.load()) {
     return std::nullopt;
   }
 
@@ -101,7 +101,7 @@ std::optional<Socket::ReceivedMessage> Socket::recvFrom() {
       return std::nullopt; // Timeout occurred
     } else {
       error("recvfrom ", std::strerror(errno));
-      exit(1);
+      exit(ERROR_EXIT_CODE);
     }
   }
 

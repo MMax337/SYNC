@@ -12,13 +12,13 @@ static bool is_valid_port(const std::string& s, bool allowZero = true) {
 
     return allowZero ? port >= 0 && port <= std::numeric_limits<port_t>::max()
                      : port > 0  && port <= std::numeric_limits<port_t>::max();
-  } catch (const std::exception&) {
+  } catch (...) {
     return false;
   }
 }
 
 static void signal_handler(int) {
-  stop.store(true, std::memory_order_relaxed);
+  STOP.store(true, std::memory_order_relaxed);
 }
 
 int main(int argc, char* argv[]) {
@@ -31,7 +31,9 @@ int main(int argc, char* argv[]) {
   std::optional<std::string> peer_address = std::nullopt;
   std::optional<port_t>      peer_port    = std::nullopt;
 
-  for (int i = 1; i < argc; ++i) {
+  bool parseFail = false;
+
+  for (int i = 1; i < argc && !parseFail; ++i) {
     std::string arg = argv[i];
 
     if (arg == "-b" && i + 1 < argc) {
@@ -41,8 +43,8 @@ int main(int argc, char* argv[]) {
       if (is_valid_port(val)) {
         port = static_cast<port_t>(std::stoul(val));
       } else {
-        std::cerr << "Invalid port value for -p: " << val << "\n";
-        return 1;
+        error("Invalid port value for -p: ", val);
+        parseFail = true;
       }
     } else if (arg == "-a" && i + 1 < argc) {
       peer_address = argv[++i];
@@ -51,32 +53,35 @@ int main(int argc, char* argv[]) {
       if (is_valid_port(val, false)) {
         peer_port = static_cast<port_t>(std::stoul(val));
       } else {
-        std::cerr << "Invalid peer port value for -r: " << val << "\n";
-        return 1;
+        error("Invalid peer port value for -r: ", val);
+        parseFail = true;
       }
     } else {
-      std::cerr << "Unknown or incomplete argument: " << arg 
-                << " at " << i << "-th position\n";
-      return 1;
+      error("Unknown or incomplete argument: ", arg, " at ", i, "-th position");
+      parseFail = true;
     }
+  }
+
+  if (parseFail) {
+    return ERROR_EXIT_CODE;
   }
 
   // Validate the pair -a/-r
   if (peer_address.has_value() != peer_port.has_value()) {
-    std::cerr << "Both -a and -r must be provided together.\n";
-    return 1;
-  }
-
-  std::optional<PeerID> peer = std::nullopt;
-  if (peer_address.has_value() && peer_port.has_value()) {
-    peer = PeerID(peer_address.value(), peer_port.value());
+    error("Both -a and -r must be provided together.");
+    return ERROR_EXIT_CODE;
   }
   
   try {
+    std::optional<PeerID> peer = std::nullopt;
+    if (peer_address.has_value() && peer_port.has_value()) {
+      peer = PeerID(peer_address.value(), peer_port.value());
+    }
+
     Node node = Node(bind_address, port, peer);
     node.run();
   } catch (...) {
-    return 1;
+    return ERROR_EXIT_CODE;
   }
 
   return 0;

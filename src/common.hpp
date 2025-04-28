@@ -14,8 +14,9 @@ inline constexpr bool enableLogging = true;
 inline constexpr bool enableLogging = false;
 #endif
 
+constexpr int ERROR_EXIT_CODE = 1;
 
-inline std::atomic<bool> stop{false};
+inline std::atomic<bool> STOP{false};
 
 using peer_set_t = std::unordered_set<PeerID, PeerID::Hash>;
 
