@@ -8,6 +8,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <fcntl.h>
+#include <ifaddrs.h>
 
 
 Socket::Socket(std::optional<std::string> ip, port_t port) {
@@ -128,7 +129,9 @@ void Socket::setReadTimeOut(std::chrono::seconds sec) {
   }
 }
 
-std::pair<address_t, port_t> Socket::getBoundAddressAndPort() {
+peer_set_t Socket::getBoundAddressAndPort() {
+  peer_set_t result;
+
   sockaddr_in localAddr {};
   socklen_t addrLen = sizeof(localAddr);
 
@@ -140,5 +143,29 @@ std::pair<address_t, port_t> Socket::getBoundAddressAndPort() {
   address_t ip = ntohl(localAddr.sin_addr.s_addr);
   port_t port = ntohs(localAddr.sin_port);
 
-  return {ip, port};
+  if (localAddr.sin_addr.s_addr == INADDR_ANY) {
+    // Bound to all interfaces.
+    struct ifaddrs* ifaddr;
+    if (getifaddrs(&ifaddr) == -1) {
+      error("getifaddrs: ", std::strerror(errno));
+      throw std::runtime_error("Error retrieving network interfaces");
+    }
+
+    for (struct ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
+      if (ifa->ifa_addr == nullptr) continue;
+      if (ifa->ifa_addr->sa_family != AF_INET) continue; // Only IPv4
+
+      sockaddr_in* addr = reinterpret_cast<sockaddr_in*>(ifa->ifa_addr);
+      address_t iface_ip = ntohl(addr->sin_addr.s_addr);
+      
+      result.emplace(iface_ip, port);
+    }
+
+    freeifaddrs(ifaddr);
+  } else {
+    // Bound to a specific interface
+    result.emplace(ip, port);
+  }
+
+  return result;
 }

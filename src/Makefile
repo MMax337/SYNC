@@ -1,5 +1,5 @@
 CXX := g++
-CXXFLAGS := -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2
+CXXFLAGS := -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2 #-DDEBUG
 LDFLAGS :=
 
 # Source files and output binary

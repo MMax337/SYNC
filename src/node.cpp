@@ -79,10 +79,17 @@ void Node::handleHelloReply(const message_t& msg, const PeerID& from) {
   helloPeer = std::nullopt; // set peer to nullopt because HELLO_REPLY is no longer expected.
   
   auto knownPeers = Message::parseHelloReply(msg);
-  auto [address, port] = socket.getBoundAddressAndPort();
-  PeerID self = PeerID(address, port);
+  peer_set_t myAddresses = socket.getBoundAddressAndPort();
+  
+  bool knownPeerContainsMe = false;
+  for (const auto& address : myAddresses) {
+    if (knownPeers.contains(address)) {
+      knownPeerContainsMe = true;
+      break;
+    }
+  }
 
-  if (knownPeers.contains(from) || knownPeers.contains(self)) {
+  if (knownPeers.contains(from) || knownPeerContainsMe) {
     log("GOT HELLO_REPLY which contains either sender or receiver");
     Message::logError(msg);
     return;

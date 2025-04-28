@@ -127,6 +127,11 @@ namespace Message {
       port = ntohs(port);
       offset += sizeof(port);
 
+      if (port == 0) {
+        logError(msg);
+        throw std::runtime_error("Zero port in HELLO_REPLY");
+      }
+
       peers.insert(PeerID{ip, port});
     }
 

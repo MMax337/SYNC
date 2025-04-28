@@ -20,8 +20,7 @@ class Socket {
   void sendTo(message_t& message, const PeerID& peer);
   std::optional<ReceivedMessage> recvFrom();
 
-  // Both address and port are returned in host byte order.
-  std::pair<address_t, port_t> getBoundAddressAndPort();
+  peer_set_t getBoundAddressAndPort();
 
 
  private:
