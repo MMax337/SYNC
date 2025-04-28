@@ -38,7 +38,7 @@ Socket::Socket(std::optional<std::string> ip, port_t port) {
     hints.ai_socktype = SOCK_DGRAM; 
     hints.ai_flags = AI_NUMERICSERV;
 
-    addrinfo* res;
+    addrinfo* res = nullptr;
     int err = getaddrinfo(ip->c_str(), nullptr, &hints, &res);
     if (err != 0) {
       error("getaddrinfo failed for ", ip.value(), ": ", gai_strerror(err));
