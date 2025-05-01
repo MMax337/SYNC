@@ -7,7 +7,7 @@ import sys
 import threading
 from time import sleep
 
-PROGRAM = os.path.join('..', 'src', 'peer-time-sync')
+PROGRAM = os.path.join('..', 'build', 'peer-time-sync')
 LOGS_DIR = "LOGS"
 Path(LOGS_DIR).mkdir(exist_ok=True)
 

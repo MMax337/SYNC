@@ -12,6 +12,9 @@ peer-time-sync
 *.o
 *.obj
 
+# Build directories
+build/
+
 # Precompiled Headers
 *.gch
 *.pch

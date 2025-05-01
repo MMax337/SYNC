@@ -3,22 +3,27 @@ CXXFLAGS := -std=c++20 -Wall -Wextra -Wpedantic -Werror -O2
 LDFLAGS :=
 
 # Source files and output binary
-SRCS := $(wildcard *.cpp)
-OBJS := $(SRCS:.cpp=.o)
-TARGET := peer-time-sync
+SRCDIR := .
+BUILDDIR := ../build
+SRCS := $(wildcard $(SRCDIR)/*.cpp)
+OBJS := $(patsubst $(SRCDIR)/%.cpp,$(BUILDDIR)/%.o,$(SRCS))
+TARGET := $(BUILDDIR)/peer-time-sync
 
-all: $(TARGET)
+all: $(BUILDDIR) $(TARGET)
 
 debug: CXXFLAGS += -DDEBUG -g
-debug: $(TARGET)
+debug: all
+
+$(BUILDDIR):
+	mkdir -p $(BUILDDIR)
 
 $(TARGET): $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $^
 
-%.o: %.cpp
+$(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -rf $(BUILDDIR)
 
-.PHONY: all clean
+.PHONY: all clean debug

@@ -250,7 +250,6 @@ void Node::handleDelayResponse(const Socket::ReceivedMessage& msg) {
 
   syncInfo.T4 = T4;
   offsetMs += (syncInfo.T2 - syncInfo.T1 + syncInfo.T3 - syncInfo.T4) / 2;
-
   syncInfo.active = false;
   syncLevel = lvl + 1;
   syncedWith = from;

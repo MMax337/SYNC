@@ -73,6 +73,10 @@ int main(int argc, char* argv[]) {
   }
   
   try {
+    if (bind_address.has_value() && bind_address.value() == "localhost") {
+      throw std::invalid_argument("Bind address must an address not a name");
+    }
+    
     std::optional<PeerID> peer = std::nullopt;
     if (peer_address.has_value() && peer_port.has_value()) {
       peer = PeerID(peer_address.value(), peer_port.value());
