@@ -2,15 +2,26 @@
 
 A peer-to-peer network clock synchronization system that implements the **Network Time Protocol** (NTP) algorithm to allow nodes to synchronize their clocks by accounting for network packet travel times.
 
+---
+
 ## Overview
 
 This application implements a peer-to-peer network for clock synchronization. Each node in the network synchronizes with other nodes by accounting for packet transmission delays. The network operates with equal rights for all nodes, with one node serving as a synchronization leader.
 
-Key features:
-- Node connection to the network through contact with another node
-- Leader selection for clock synchronization
-- Clock synchronization with compensation for transmission delays
-- UDP-based communication with IPv4 addressing
+---
+## 📌 Features
+
+- ⏱️ Precise clock synchronization using timestamp exchanges
+- 🌐 Peer-to-peer communication model over UDP
+- 🧠 Implements NTP-like offset and delay estimation:
+  ```
+  offset = (T2 - T1 + T3 - T4) / 2
+  delay  = (T4 - T1) - (T3 - T2)
+  ```
+- 🧪 Includes Python testing scripts for simulation and validation
+- 🔄 Leader election and correction propagation between nodes
+
+---
 
 ## How It Works
 
@@ -22,7 +33,7 @@ Each node maintains a synchronization level:
 - **1**: Node is synchronized directly with the leader
 - **2+**: Node is synchronized with a node that is synchronized with the leader (up to 254)
 
-### Building and Running
+### 📦 Building and Running
 
 ```bash
 # Navigate to the src directory
@@ -45,6 +56,15 @@ To clean build artifacts:
 make clean
 ```
 
+### 🧪 Testing
+
+The `tests/` folder includes Python scripts for simulating different scenarios.
+To run tests:
+
+```bash
+python3 tests/test{test_id}.py
+```
+
 ## Command-Line Parameters
 
 The program accepts the following command-line parameters:
@@ -55,7 +75,7 @@ The program accepts the following command-line parameters:
 - `-r peer_port` - Port of another node to connect with (optional, required if -a is specified)
 
 Parameters can be specified in any order. Both `-a` and `-r` must be provided together when connecting to an existing node.
-
+---
 ## Network Protocol
 
 ### Messages
