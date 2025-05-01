@@ -2,13 +2,12 @@
 
 A peer-to-peer network clock synchronization system that implements the **Network Time Protocol** (NTP) algorithm to allow nodes to synchronize their clocks by accounting for network packet travel times.
 
----
 
 ## Overview
 
 This application implements a peer-to-peer network for clock synchronization. Each node in the network synchronizes with other nodes by accounting for packet transmission delays. The network operates with equal rights for all nodes, with one node serving as a synchronization leader.
 
----
+
 ## 📌 Features
 
 - ⏱️ Precise clock synchronization using timestamp exchanges
@@ -21,7 +20,6 @@ This application implements a peer-to-peer network for clock synchronization. Ea
 - 🧪 Includes Python testing scripts for simulation and validation
 - 🔄 Leader election and correction propagation between nodes
 
----
 
 ## How It Works
 
@@ -75,7 +73,7 @@ The program accepts the following command-line parameters:
 - `-r peer_port` - Port of another node to connect with (optional, required if -a is specified)
 
 Parameters can be specified in any order. Both `-a` and `-r` must be provided together when connecting to an existing node.
----
+
 ## Network Protocol
 
 ### Messages
